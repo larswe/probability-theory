@@ -129,4 +129,29 @@ qed
 
 subsubsection "Limits of Sets"
 
+definition liminf :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
+  where "liminf A = 
+         general_union {B. \<exists>n. B = general_intersection {C. \<exists>k. k \<ge> n \<and> C = A k}}"
+
+lemma liminf_general_inter: "(x \<in> liminf A) = 
+                             (\<exists>n. x \<in> general_intersection {C. \<exists>k. k \<ge> n \<and> C = A k})"
+proof - 
+  have "(x \<in> liminf A) = 
+         (\<exists>S. \<exists>n. S = general_intersection {C. \<exists>k. k \<ge> n \<and> C = A k} \<and> x \<in> S)"
+    by (simp add: liminf_def general_union_def)
+  thus ?thesis 
+    by auto 
+qed
+
+lemma liminf_greater_n: "(x \<in> liminf A) = (\<exists>n. \<forall>k. k \<ge> n \<longrightarrow> x \<in> A k)"
+proof - 
+  have "(x \<in> liminf A) = (\<exists>n. x \<in> general_intersection {C. \<exists>k. k \<ge> n \<and> C = A k})"
+    by (simp add: liminf_general_inter) 
+  hence "(x \<in> liminf A) = (\<exists>n. \<forall>S. (S \<in> {C. \<exists>k. k \<ge> n \<and> C = A k} \<longrightarrow> x \<in> S))"
+    by (simp add: general_intersection_def)
+  thus ?thesis
+    by auto
+qed
+
+
 end
