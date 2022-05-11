@@ -432,4 +432,25 @@ proof -
     by (simp add: set_limit_eq_limsup) 
 qed
 
+
+subsection "Collections of Sets"
+
+definition complement_stable :: "'a set set \<Rightarrow> bool"
+  where "complement_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. set_complement A \<in> \<A>)"
+
+definition finite_union_stable :: "'a set set \<Rightarrow> bool"
+  where "finite_union_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. A\<union>B \<in> \<A>)"
+
+definition finite_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "finite_inter_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. A\<inter>B \<in> \<A>)"
+
+definition set_diff_stable :: "'a set set \<Rightarrow> bool"
+  where "set_diff_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. B \<subseteq> A \<longrightarrow> A-B \<in> \<A>)"
+
+definition countable_union_stable :: "'a set set \<Rightarrow> bool"
+  where "countable_union_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<^sub>n. ((\<forall>A\<in>A\<^sub>n. A\<in>\<A>) \<and> (countable A\<^sub>n)) \<longrightarrow> 
+  (general_union A\<^sub>n \<in> \<A>))"
+
+(* TODO - Complement should be w.r.t. some general set Omega, rather than UNIV*)
+
 end
