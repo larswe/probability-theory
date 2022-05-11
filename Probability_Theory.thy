@@ -81,6 +81,30 @@ lemma general_union_singleton: "general_union {A} = A"
 lemma general_union_UNIV: "general_union UNIV = UNIV"
   using general_union_def by fast 
 
+lemma general_union_sequence: "general_union {A. \<exists>n. A = A\<^sub>n n} =
+                                      {x. \<exists>n. x \<in> A\<^sub>n n}"
+proof 
+  show "general_union {A. \<exists>n. A = A\<^sub>n n} \<subseteq> {x. \<exists>n. x \<in> A\<^sub>n n}"
+  proof 
+    fix x 
+    assume "x \<in> general_union {A. \<exists>n. A = A\<^sub>n n}"
+    hence "\<exists>S. S \<in> {A. \<exists>n. A = A\<^sub>n n} \<and> x \<in> S"
+      by (simp add: general_union_def)
+    thus "x \<in> {x. \<exists>n. x \<in> A\<^sub>n n}"  
+      by auto 
+  qed
+next 
+  show "{x. \<exists>n. x \<in> A\<^sub>n n} \<subseteq> general_union {A. \<exists>n. A = A\<^sub>n n}"
+  proof 
+    fix x 
+    assume "x \<in> {x. \<exists>n. x \<in> A\<^sub>n n}"
+    hence "\<exists>S. S \<in> {A. \<exists>n. A = A\<^sub>n n} \<and> x \<in> S"
+      by auto 
+    thus "x \<in> general_union {A. \<exists>n. A = A\<^sub>n n}"
+      by (simp add: general_union_def)
+  qed
+qed 
+
 
 definition general_intersection :: "'a set set \<Rightarrow> 'a set"
   where "general_intersection A = {x. \<forall>S. S \<in> A \<longrightarrow> x \<in> S}"
@@ -108,6 +132,29 @@ proof -
     by simp 
 qed
 
+lemma general_intersection_sequence: "general_intersection {A. \<exists>n. A = A\<^sub>n n} =
+                                      {x. \<forall>n. x \<in> A\<^sub>n n}"
+proof 
+  show "general_intersection {A. \<exists>n. A = A\<^sub>n n} \<subseteq> {x. \<forall>n. x \<in> A\<^sub>n n}"
+  proof 
+    fix x 
+    assume "x \<in> general_intersection {A. \<exists>n. A = A\<^sub>n n}"
+    hence "\<forall>S. S \<in> {A. \<exists>n. A = A\<^sub>n n} \<longrightarrow> x \<in> S"
+      by (simp add: general_intersection_def)
+    thus "x \<in> {x. \<forall>n. x \<in> A\<^sub>n n}"  
+      by auto 
+  qed
+next 
+  show "{x. \<forall>n. x \<in> A\<^sub>n n} \<subseteq> general_intersection {A. \<exists>n. A = A\<^sub>n n}"
+  proof 
+    fix x 
+    assume "x \<in> {x. \<forall>n. x \<in> A\<^sub>n n}"
+    hence "\<forall>S. S \<in> {A. \<exists>n. A = A\<^sub>n n} \<longrightarrow> x \<in> S"
+      by auto 
+    thus "x \<in> general_intersection {A. \<exists>n. A = A\<^sub>n n}"
+      by (simp add: general_intersection_def)
+  qed
+qed 
 
 definition set_complement :: "'a set \<Rightarrow> 'a set"
   where "set_complement A = {x. x \<notin> A}"
@@ -294,19 +341,19 @@ proof -
       hence "(\<exists>m. x \<in> A\<^sub>n m)"
         by auto 
       thus "x \<in> general_union {A. \<exists>n. A = A\<^sub>n n}" 
-        using general_union_def by fast 
+        using general_union_sequence by fast  
     qed
   next 
     show "general_union {A. \<exists>n. A = A\<^sub>n n} \<subseteq> limsup A\<^sub>n"
     proof 
       fix x 
       assume "x \<in> general_union {A. \<exists>n. A = A\<^sub>n n}" 
-      hence "x \<in> {x. \<exists>S. S \<in> {A. \<exists>n. A = A\<^sub>n n} \<and> x \<in> S}"
-        by (simp add: general_union_def)
+      hence "x \<in> {x. \<exists>n. x \<in> A\<^sub>n n}"
+        using general_union_sequence by metis 
       hence "\<exists>n. x \<in> A\<^sub>n n"
         by auto 
       then obtain n where "x \<in> A\<^sub>n n" 
-        by fast 
+        by auto 
       hence "\<forall>m\<ge>n. x \<in> A\<^sub>n m"
         by (meson non_decreasing non_decreasing_stay_in)
       thus "x \<in> limsup A\<^sub>n"
@@ -335,10 +382,54 @@ proof -
     by (simp add: set_limit_eq_limsup) 
 qed
 
-thm general_union_def 
-thm non_decreasing_def
+lemma non_increasing_set_limit: 
+  assumes non_increasing: "non_increasing A\<^sub>n"
+  shows "set_limit A\<^sub>n = general_intersection {A. \<exists>n. A = A\<^sub>n n}"
+proof - 
+  have "limsup A\<^sub>n = general_intersection {A. \<exists>n. A = A\<^sub>n n}" 
+  proof 
+    show "limsup A\<^sub>n \<subseteq> general_intersection {A. \<exists>n. A = A\<^sub>n n}"
+    proof 
+      fix x 
+      assume "x \<in> limsup A\<^sub>n"
+      hence "\<forall>n. \<exists>m. m \<ge> n \<and> x \<in> A\<^sub>n m"
+        by (simp add: limsup_greater_n) 
+      hence "\<forall>m. x \<in> A\<^sub>n m"
+        using non_increasing non_increasing_stay_out by metis 
+      thus "x \<in> general_intersection {A. \<exists>n. A = A\<^sub>n n}"
+        using general_intersection_sequence by fast 
+    qed
+  next 
+    show "general_intersection {A. \<exists>n. A = A\<^sub>n n} \<subseteq> limsup A\<^sub>n"
+    proof 
+      fix x 
+      assume "x \<in> general_intersection {A. \<exists>n. A = A\<^sub>n n}" 
+      hence "\<forall>n. x \<in> A\<^sub>n n"
+        using general_intersection_sequence by fast 
+      thus "x \<in> limsup A\<^sub>n"
+        by (meson limsup_greater_n order_refl)
+    qed
+  qed
 
-thm general_intersection_def
-thm non_increasing_def 
+  moreover have "limsup A\<^sub>n = liminf A\<^sub>n" 
+  proof - 
+    have "limsup A\<^sub>n \<subseteq> liminf A\<^sub>n"
+    proof 
+      fix x 
+      assume "x \<in> limsup A\<^sub>n"
+      hence "\<forall>n. \<exists>m. m \<ge> n \<and> x \<in> A\<^sub>n m"
+        by (simp add: limsup_greater_n)
+      hence "\<exists>n. \<forall>k\<ge>n. x \<in> A\<^sub>n k"
+        by (meson non_increasing non_increasing_stay_out)
+      thus "x \<in> liminf A\<^sub>n"
+        by (simp add: liminf_greater_n) 
+    qed
+    thus ?thesis
+      using liminf_limsup_eq_cond by auto 
+  qed
+
+  ultimately show ?thesis
+    by (simp add: set_limit_eq_limsup) 
+qed
 
 end
