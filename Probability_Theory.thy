@@ -20,8 +20,47 @@ definition power_set :: "'a set \<Rightarrow> ('a set) set"
 definition non_decreasing :: "(nat \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "non_decreasing A\<^sub>n \<equiv> \<forall>n. A\<^sub>n n \<subseteq> A\<^sub>n (n + 1)"
 
+lemma non_decreasing_multistep: 
+  assumes non_dec: "non_decreasing A\<^sub>n"
+      and leq: "n \<le> m"
+    shows "A\<^sub>n n \<subseteq> A\<^sub>n m"
+proof - 
+  have "\<forall>n y. y \<in> A\<^sub>n n \<longrightarrow> y \<in> A\<^sub>n (Suc n)"
+    using non_dec non_decreasing_def Suc_eq_plus1 subset_iff by metis
+  hence "\<forall>n. \<forall>d\<ge>0. (A\<^sub>n n \<subseteq> A\<^sub>n (n+d))" 
+      using add.commute le_add2 lift_Suc_mono_le subset_iff by metis
+  thus "A\<^sub>n n \<subseteq> A\<^sub>n m"
+    by (metis bot_nat_0.extremum le_iff_add leq)
+qed 
+
+lemma non_decreasing_stay_in: 
+  assumes non_dec: "non_decreasing A\<^sub>n"
+      and base: "x \<in> A\<^sub>n n"
+    shows "\<forall>m\<ge>n. x \<in> A\<^sub>n m"
+  using base non_dec non_decreasing_multistep by auto
+
 definition non_increasing :: "(nat \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "non_increasing A\<^sub>n \<equiv> \<forall>n. A\<^sub>n (n + 1) \<subseteq> A\<^sub>n n"
+
+lemma non_increasing_multistep: 
+  assumes non_inc: "non_increasing A\<^sub>n"
+      and leq: "n \<le> m"
+    shows "A\<^sub>n m \<subseteq> A\<^sub>n n"
+proof - 
+  have "\<forall>n y. y \<in> A\<^sub>n (Suc n) \<longrightarrow> y \<in> A\<^sub>n n"
+    using non_inc non_increasing_def Suc_eq_plus1 subset_iff by metis
+  hence "\<forall>n. \<forall>d\<ge>0. (A\<^sub>n (n+d) \<subseteq> A\<^sub>n n)" 
+      using add.commute le_add2 subset_iff lift_Suc_antimono_le by metis 
+  thus "A\<^sub>n m \<subseteq> A\<^sub>n n"
+    by (metis bot_nat_0.extremum le_iff_add leq)
+qed 
+
+lemma non_increasing_stay_out: 
+  assumes non_inc: "non_increasing A\<^sub>n"
+      and base: "x \<notin> A\<^sub>n n"
+    shows "\<forall>m\<ge>n. x \<notin> A\<^sub>n m"
+  using base non_inc non_increasing_multistep by auto
+
 
 definition general_union :: "'a set set \<Rightarrow> 'a set"
   where "general_union A = {x. \<exists>S. S \<in> A \<and> x \<in> S}"
@@ -133,7 +172,7 @@ definition liminf :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "liminf A = 
          general_union {B. \<exists>n. B = general_intersection {C. \<exists>k. k \<ge> n \<and> C = A k}}"
 
-lemma liminf_greater_n: fixes x shows "(x \<in> liminf A) = (\<exists>n. \<forall>k. (k \<ge> n \<longrightarrow> x \<in> A k))"
+lemma liminf_greater_n: "(x \<in> liminf A) = (\<exists>n. \<forall>k. (k \<ge> n \<longrightarrow> x \<in> A k))"
 proof - 
   have "(x \<in> liminf A) = 
          (\<exists>S. \<exists>n. S = general_intersection {C. \<exists>k. k \<ge> n \<and> C = A k} \<and> x \<in> S)"
@@ -169,10 +208,6 @@ next
   qed
 qed
    
-thm general_intersection_def 
-(* general_intersection ?A = {x. \<forall>S. S \<in> ?A \<longrightarrow> x \<in> S} *)
-thm general_union_def 
-(* general_union ?A = {x. \<exists>S. S \<in> ?A \<and> x \<in> S} *)
 
 definition limsup :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "limsup A = general_intersection {B. \<exists>n. B = general_union {C. \<exists>m. m \<ge> n \<and> C = A m}}"
@@ -212,5 +247,98 @@ next
       by (simp add: limsup_greater_n) 
   qed
 qed
+
+lemma liminf_sub_limsup: "liminf A \<subseteq> limsup A"
+proof 
+  fix x 
+  assume "x \<in> liminf A"
+  hence "\<exists>n. \<forall>m. (m \<ge> n \<longrightarrow> x \<in> A m)"
+    by (simp add: liminf_greater_n)
+  hence "\<forall>n. \<exists>m. m \<ge> n \<and> x \<in> A m"
+    by (meson nat_le_linear)  
+  thus "x \<in> limsup A" 
+    by (simp add: limsup_greater_n) 
+qed
+
+lemma liminf_limsup_eq_cond: 
+  assumes limsup_sub_liminf: "limsup A \<subseteq> liminf A" 
+  shows "liminf A = limsup A"
+  by (simp add: limsup_sub_liminf liminf_sub_limsup subset_antisym)
+
+
+definition set_limit :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
+  where "set_limit A = (THE S. S = liminf A \<and> S = limsup A)"
+
+lemma set_limit_eq_liminf: 
+  assumes lim_defined: "liminf A = limsup A"
+  shows "set_limit A = liminf A"
+  by (simp add: lim_defined set_limit_def)
+
+lemma set_limit_eq_limsup: 
+  assumes lim_defined: "liminf A = limsup A"
+  shows "set_limit A = limsup A"
+  by (simp add: lim_defined set_limit_def)
+
+lemma non_decreasing_set_limit: 
+  assumes non_decreasing: "non_decreasing A\<^sub>n"
+  shows "set_limit A\<^sub>n = general_union {A. \<exists>n. A = A\<^sub>n n}"
+proof - 
+  have "limsup A\<^sub>n = general_union {A. \<exists>n. A = A\<^sub>n n}" 
+  proof 
+    show "limsup A\<^sub>n \<subseteq> general_union {A. \<exists>n. A = A\<^sub>n n}"
+    proof 
+      fix x 
+      assume "x \<in> limsup A\<^sub>n"
+      hence "(\<exists>m. m \<ge> 1 \<and> x \<in> A\<^sub>n m)"
+        by (simp add: limsup_greater_n) 
+      hence "(\<exists>m. x \<in> A\<^sub>n m)"
+        by auto 
+      thus "x \<in> general_union {A. \<exists>n. A = A\<^sub>n n}" 
+        using general_union_def by fast 
+    qed
+  next 
+    show "general_union {A. \<exists>n. A = A\<^sub>n n} \<subseteq> limsup A\<^sub>n"
+    proof 
+      fix x 
+      assume "x \<in> general_union {A. \<exists>n. A = A\<^sub>n n}" 
+      hence "x \<in> {x. \<exists>S. S \<in> {A. \<exists>n. A = A\<^sub>n n} \<and> x \<in> S}"
+        by (simp add: general_union_def)
+      hence "\<exists>n. x \<in> A\<^sub>n n"
+        by auto 
+      then obtain n where "x \<in> A\<^sub>n n" 
+        by fast 
+      hence "\<forall>m\<ge>n. x \<in> A\<^sub>n m"
+        by (meson non_decreasing non_decreasing_stay_in)
+      thus "x \<in> limsup A\<^sub>n"
+        by (meson limsup_greater_n nat_le_linear) 
+    qed
+  qed
+
+  moreover have "limsup A\<^sub>n = liminf A\<^sub>n" 
+  proof - 
+    have "limsup A\<^sub>n \<subseteq> liminf A\<^sub>n"
+    proof 
+      fix x 
+      assume "x \<in> limsup A\<^sub>n"
+      hence "\<forall>n. \<exists>m. m \<ge> n \<and> x \<in> A\<^sub>n m"
+        by (simp add: limsup_greater_n)
+      hence "\<exists>n. \<forall>k. (k \<ge> n \<longrightarrow> x \<in> A\<^sub>n k)"
+        by (meson non_decreasing non_decreasing_stay_in)
+      thus "x \<in> liminf A\<^sub>n"
+        by (simp add: liminf_greater_n)
+    qed
+    thus ?thesis
+      using liminf_limsup_eq_cond by auto 
+  qed
+
+  ultimately show ?thesis
+    by (simp add: set_limit_eq_limsup) 
+qed
+
+thm general_union_def 
+thm non_decreasing_def
+
+thm general_intersection_def
+thm non_increasing_def 
 
 end
