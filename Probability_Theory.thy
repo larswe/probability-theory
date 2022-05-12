@@ -212,8 +212,12 @@ definition complement_stable :: "'a set set \<Rightarrow> 'a set \<Rightarrow> b
 definition finite_union_stable :: "'a set set \<Rightarrow> bool"
   where "finite_union_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<in>\<A>.\<forall>B\<in>\<A>. A \<union> B \<in> \<A>))"
 
+(* TODO - Show that fu_stable means stable under finite unions. *)
+
 definition finite_inter_stable :: "'a set set \<Rightarrow> bool"
   where "finite_inter_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<in>\<A>.\<forall>B\<in>\<A>. A \<inter> B \<in> \<A>))"
+
+(* TODO - Show that fi_stable means stable under finite intersections. *)
 
 lemma c_fu_imp_fi_stable: 
   assumes c_stable: "complement_stable \<A> \<Omega>"
@@ -290,5 +294,28 @@ proof -
   ultimately show ?thesis 
     by (simp add: finite_union_stable_def) 
 qed
+
+definition set_diff_stable :: "'a set set \<Rightarrow> bool"
+  where "set_diff_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<in>\<A>.\<forall>B. (B \<subseteq> A) \<longrightarrow> (A - B \<in> \<A>)))"
+
+definition countable_union_stable :: "'a set set \<Rightarrow> bool"
+  where "countable_union_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A>) \<longrightarrow> ((\<Union>i::nat. A\<^sub>n i) \<in> \<A>)))"
+
+definition disj_countable_union_stable :: "'a set set \<Rightarrow> bool"
+  where "disj_countable_union_stable \<A> = 
+        ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A> \<and> disjoint_family A\<^sub>n) \<longrightarrow> ((\<Union>i::nat. A\<^sub>n i) \<in> \<A>)))"
+
+definition countable_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "countable_inter_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A>) \<longrightarrow> ((\<Inter>i::nat. A\<^sub>n i) \<in> \<A>)))"
+
+(* TODO - Show that c_stable + cu_stable = c_stable + ci_stable. *) 
+
+definition non_decreasing_union_stable :: "'a set set \<Rightarrow> bool"
+  where "non_decreasing_union_stable \<A> = 
+        ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A> \<and> non_decreasing A\<^sub>n) \<longrightarrow> ((\<Union>i::nat. A\<^sub>n i) \<in> \<A>)))"
+
+definition non_increasing_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "non_increasing_inter_stable \<A> = 
+        ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A> \<and> non_increasing A\<^sub>n) \<longrightarrow> ((\<Inter>i::nat. A\<^sub>n i) \<in> \<A>)))"
 
 end
