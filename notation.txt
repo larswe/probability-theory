@@ -1,0 +1,4 @@
+A, B, ... = Sequences of Sets 
+S, T, ... = Sets 
+M, N, ... = Collections of Sets
+Omega = Ground Set (in the context of collections)
