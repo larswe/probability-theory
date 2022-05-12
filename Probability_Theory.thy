@@ -572,6 +572,22 @@ next
     by (simp add: algebra_iff_Un complement_stable_def finite_union_stable_def) 
 qed 
 
+lemma algebra_omega_c_fi_stable: 
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_inter_stable M)"
+proof 
+  assume "algebra \<Omega> M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M"
+    by (simp add: algebra_omega_c_fu_stable)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_inter_stable M"
+    by (meson Pow_iff c_fu_imp_fi_stable subset_iff)
+next 
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_inter_stable M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M"
+    by (meson PowD c_fi_imp_fu_stable subset_eq)
+  thus "algebra \<Omega> M"
+    by (simp add: algebra_omega_c_fu_stable)
+qed 
+
 lemma sigma_algebra_omega_c_cu_stable: 
   shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_union_stable M)"
 proof -
@@ -584,8 +600,40 @@ proof -
     by (metis countable_union_stable_def empty_iff cu_imp_fu_stable)
 qed
 
+lemma sigma_algebra_omega_c_ci_stable: 
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_inter_stable M)"
+proof 
+  assume "sigma_algebra \<Omega> M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_union_stable M"
+    by (simp add: sigma_algebra_omega_c_cu_stable)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_inter_stable M"
+    by (meson Pow_iff c_cu_imp_ci_stable subset_iff)
+next 
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_inter_stable M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_union_stable M"
+    by (meson PowD c_ci_imp_cu_stable subset_eq)
+  thus "sigma_algebra \<Omega> M"
+    by (simp add: sigma_algebra_omega_c_cu_stable)
+qed
+
 locale monotone_class = subset_class + 
   assumes ndu_stable: "non_decreasing_union_stable M"
       and ncdi_stable: "non_increasing_inter_stable M"
+
+locale pi_system = subset_class + 
+  assumes fi_stable: "finite_inter_stable M"
+
+lemma dynkin_omega_c_disju_stable:
+  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> disj_countable_union_stable M)"
+proof - 
+  have "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> (\<forall>A. A \<in> M \<longrightarrow> \<Omega> - A \<in> M) \<and> 
+       (\<forall>A::nat \<Rightarrow> 'a set. disjoint_family A \<longrightarrow> range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M))"
+    unfolding Dynkin_system_def Dynkin_system_axioms_def subset_class_def by fast 
+  thus ?thesis 
+    using complement_stable_def disj_countable_union_stable_def empty_iff by metis
+qed
+
+lemma dynkin_omega_diff_ndu_stable:
+  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_stable M \<and> non_decreasing_union_stable M)" oops
 
 end
