@@ -206,6 +206,8 @@ qed
 
 section "Collections of Sets"
 
+subsection "Rules for Collections of Sets"
+
 definition complement_stable :: "'a set set \<Rightarrow> 'a set \<Rightarrow> bool"
   where "complement_stable \<A> \<Omega> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<in>\<A>. \<Omega> - A \<in> \<A>))"
 
@@ -317,5 +319,26 @@ definition non_decreasing_union_stable :: "'a set set \<Rightarrow> bool"
 definition non_increasing_inter_stable :: "'a set set \<Rightarrow> bool"
   where "non_increasing_inter_stable \<A> = 
         ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A> \<and> non_increasing A\<^sub>n) \<longrightarrow> ((\<Inter>i::nat. A\<^sub>n i) \<in> \<A>)))"
+
+
+subsection "Algebras and Systems"
+
+lemma algebra_omega_c_fu_stable: 
+  shows "algebra \<Omega> \<A> = (\<A> \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> \<A> \<and> complement_stable \<A> \<Omega> \<and> finite_union_stable \<A>)"
+proof 
+  assume alg: "algebra \<Omega> \<A>"
+  hence "\<A> \<subseteq> Pow \<Omega> \<and> {} \<in> \<A> \<and> complement_stable \<A> \<Omega> \<and> finite_union_stable \<A>"
+    using algebra_iff_Un complement_stable_def finite_union_stable_def by fastforce
+  moreover have "\<Omega> \<in> \<A>"
+    by (simp add: alg algebra.top) 
+  ultimately show "\<A> \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> \<A> \<and> complement_stable \<A> \<Omega> \<and> finite_union_stable \<A>" 
+    by simp 
+next 
+  assume "\<A> \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> \<A> \<and> complement_stable \<A> \<Omega> \<and> finite_union_stable \<A>"
+  moreover have "{} \<in> \<A>"
+    using calculation complement_stable_def Diff_cancel by metis 
+  ultimately show "algebra \<Omega> \<A>" 
+    by (simp add: algebra_iff_Un complement_stable_def finite_union_stable_def) 
+qed 
 
 end
