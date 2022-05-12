@@ -214,12 +214,75 @@ definition complement_stable :: "'a set set \<Rightarrow> 'a set \<Rightarrow> b
 definition finite_union_stable :: "'a set set \<Rightarrow> bool"
   where "finite_union_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<in>\<A>.\<forall>B\<in>\<A>. A \<union> B \<in> \<A>))"
 
-(* TODO - Show that fu_stable means stable under finite unions. *)
+lemma fu_stable_finite: 
+  assumes fu_stable: "finite_union_stable \<A>"
+      and family_in: "\<forall>i\<in>I. A\<^sub>n i \<in> \<A>"
+      and finite: "finite I"
+      and non_empty: "I \<noteq> {}"
+    shows "(\<Union>i\<in>I. A\<^sub>n i) \<in> \<A>"
+  using finite non_empty family_in fu_stable
+proof (induction I rule: finite_induct)
+  case empty
+  then show ?case
+    by auto 
+next
+  case (insert x F)
+  show ?case 
+  proof (cases "F = {}")
+    case True
+    hence "\<Union> (A\<^sub>n ` insert x F) = A\<^sub>n x"
+      by simp
+    then show "\<Union> (A\<^sub>n ` insert x F) \<in> \<A>"
+      by (simp add: insert.prems(2)) 
+  next
+    case False
+    hence "(\<Union>i\<in>F. A\<^sub>n i) \<in> \<A>"
+      by (simp add: fu_stable insert.IH insert.prems(2)) 
+    moreover have "A\<^sub>n x \<in> \<A>"
+      by (simp add: insert.prems(2))
+    moreover have "\<Union> (A\<^sub>n ` insert x F) = (\<Union>i\<in>F. A\<^sub>n i) \<union> (A\<^sub>n x)"
+      by auto 
+    ultimately show "\<Union> (A\<^sub>n ` insert x F) \<in> \<A>"
+      by (metis finite_union_stable_def fu_stable) 
+  qed
+qed 
+    
 
 definition finite_inter_stable :: "'a set set \<Rightarrow> bool"
   where "finite_inter_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<in>\<A>.\<forall>B\<in>\<A>. A \<inter> B \<in> \<A>))"
 
-(* TODO - Show that fi_stable means stable under finite intersections. *)
+lemma fi_stable_finite: 
+  assumes fi_stable: "finite_inter_stable \<A>"
+      and family_in: "\<forall>i\<in>I. A\<^sub>n i \<in> \<A>"
+      and finite: "finite I"
+      and non_empty: "I \<noteq> {}"
+    shows "(\<Inter>i\<in>I. A\<^sub>n i) \<in> \<A>"
+  using finite non_empty family_in fi_stable
+proof (induction I rule: finite_induct)
+  case empty
+  then show ?case
+    by auto 
+next
+  case (insert x F)
+  show ?case 
+  proof (cases "F = {}")
+    case True
+    hence "\<Inter> (A\<^sub>n ` insert x F) = A\<^sub>n x"
+      by simp
+    then show "\<Inter> (A\<^sub>n ` insert x F) \<in> \<A>"
+      by (simp add: insert.prems(2)) 
+  next
+    case False
+    hence "(\<Inter>i\<in>F. A\<^sub>n i) \<in> \<A>"
+      by (simp add: fi_stable insert.IH insert.prems(2)) 
+    moreover have "A\<^sub>n x \<in> \<A>"
+      by (simp add: insert.prems(2))
+    moreover have "\<Inter> (A\<^sub>n ` insert x F) = (\<Inter>i\<in>F. A\<^sub>n i) \<inter> (A\<^sub>n x)"
+      by auto 
+    ultimately show "\<Inter> (A\<^sub>n ` insert x F) \<in> \<A>"
+      by (metis finite_inter_stable_def fi_stable) 
+  qed
+qed 
 
 lemma c_fu_imp_fi_stable: 
   assumes c_stable: "complement_stable \<A> \<Omega>"
@@ -394,12 +457,12 @@ proof -
         proof 
           fix x 
           assume x_in: "x \<in> ?I"
-          hence "x \<in> A"
+          hence "\<forall>i. x \<in> ?A\<^sub>n i"
+            by fast 
+          moreover have "?A\<^sub>n 0 = B \<and> ?A\<^sub>n 1 = A"
             by auto 
-          moreover have "x \<in> ?A\<^sub>n 0"
-            by (metis (mono_tags) x_in Inter_iff range_subsetD subsetI) 
-          ultimately show "x \<in> A \<inter> B"
-            by simp 
+          ultimately show "x \<in> A \<inter> B" 
+            by fast 
         qed
       next 
         show "A \<inter> B \<subseteq> ?I"
