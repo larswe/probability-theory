@@ -103,7 +103,7 @@ lemma set_limit_eq_limsup:
   shows "set_limit A = limsup A"
   by (simp add: liminf_limsup_eq_cond limsup_subseq_liminf set_limit_eq_liminf)
 
-lemma non_decreasing_set_limit: 
+proposition non_decreasing_set_limit: 
   assumes non_decreasing: "non_decreasing A\<^sub>n"
   shows "set_limit A\<^sub>n = \<Union>(range A\<^sub>n)" 
 proof - 
@@ -153,7 +153,7 @@ proof -
     by (simp add: set_limit_eq_limsup) 
 qed
 
-lemma non_increasing_set_limit: 
+proposition non_increasing_set_limit: 
   assumes non_increasing: "non_increasing A\<^sub>n"
   shows "set_limit A\<^sub>n = \<Inter>(range A\<^sub>n)" 
 proof - 
@@ -303,6 +303,63 @@ definition set_diff_stable :: "'a set set \<Rightarrow> bool"
 definition countable_union_stable :: "'a set set \<Rightarrow> bool"
   where "countable_union_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A>) \<longrightarrow> ((\<Union>i::nat. A\<^sub>n i) \<in> \<A>)))"
 
+lemma cu_imp_fu_stable: 
+  assumes cu_stable: "countable_union_stable \<A>"
+  shows "finite_union_stable \<A>"
+proof - 
+  have "\<A> \<noteq> {}" 
+    using cu_stable countable_union_stable_def by auto 
+
+  moreover have "\<forall>A\<in>\<A>.\<forall>B\<in>\<A>. A \<union> B \<in> \<A>" 
+  proof 
+    fix A
+    assume A_in: "A \<in> \<A>"
+    show "\<forall>B\<in>\<A>. A \<union> B \<in> \<A>"
+    proof 
+      fix B
+      let ?A\<^sub>n = "(\<lambda>n. if n = (1::nat) then A else B)"
+      let ?U = "(\<Union>i. ?A\<^sub>n i)"
+      assume "B \<in> \<A>"
+      hence "range ?A\<^sub>n \<subseteq> \<A>"
+        using A_in by auto 
+      hence "?U \<in> \<A>"
+        using cu_stable countable_union_stable_def by metis
+      moreover have "?U = A \<union> B" 
+      proof 
+        show "?U \<subseteq> A \<union> B"
+          by simp
+      next 
+        show "A \<union> B \<subseteq> ?U" 
+        proof 
+          fix x 
+          assume "x \<in> A \<union> B"
+          then consider (A) "x \<in> A" | (B) "x \<in> B"
+            by fast 
+          thus "x \<in> ?U"  
+          proof cases
+            case A
+            hence "x \<in> ?A\<^sub>n 1"
+              by simp
+            thus ?thesis 
+              by fast 
+          next
+            case B
+            hence "x \<in> ?A\<^sub>n 0"
+              by simp
+            thus ?thesis 
+              by fast 
+          qed 
+        qed
+      qed
+      ultimately show "A \<union> B \<in> \<A>" 
+        by simp 
+    qed
+  qed
+
+  ultimately show ?thesis 
+    using finite_union_stable_def by auto 
+qed
+
 definition disj_countable_union_stable :: "'a set set \<Rightarrow> bool"
   where "disj_countable_union_stable \<A> = 
         ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A> \<and> disjoint_family A\<^sub>n) \<longrightarrow> ((\<Union>i::nat. A\<^sub>n i) \<in> \<A>)))"
@@ -310,7 +367,118 @@ definition disj_countable_union_stable :: "'a set set \<Rightarrow> bool"
 definition countable_inter_stable :: "'a set set \<Rightarrow> bool"
   where "countable_inter_stable \<A> = ((\<A> \<noteq> {}) \<and> (\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A>) \<longrightarrow> ((\<Inter>i::nat. A\<^sub>n i) \<in> \<A>)))"
 
-(* TODO - Show that c_stable + cu_stable = c_stable + ci_stable. *) 
+lemma ci_imp_fi_stable: 
+  assumes ci_stable: "countable_inter_stable \<A>"
+  shows "finite_inter_stable \<A>"
+proof - 
+  have "\<A> \<noteq> {}" 
+    using ci_stable countable_inter_stable_def by auto 
+
+  moreover have "\<forall>A\<in>\<A>.\<forall>B\<in>\<A>. A \<inter> B \<in> \<A>" 
+  proof 
+    fix A
+    assume A_in: "A \<in> \<A>"
+    show "\<forall>B\<in>\<A>. A \<inter> B \<in> \<A>"
+    proof 
+      fix B
+      let ?A\<^sub>n = "(\<lambda>n. if n = (1::nat) then A else B)"
+      let ?I = "(\<Inter>i. ?A\<^sub>n i)"
+      assume "B \<in> \<A>"
+      hence "range ?A\<^sub>n \<subseteq> \<A>"
+        using A_in by auto 
+      hence "?I \<in> \<A>"
+        using ci_stable countable_inter_stable_def by metis
+      moreover have "?I = A \<inter> B" 
+      proof 
+        show "?I \<subseteq> A \<inter> B"
+        proof 
+          fix x 
+          assume x_in: "x \<in> ?I"
+          hence "x \<in> A"
+            by auto 
+          moreover have "x \<in> ?A\<^sub>n 0"
+            by (metis (mono_tags) x_in Inter_iff range_subsetD subsetI) 
+          ultimately show "x \<in> A \<inter> B"
+            by simp 
+        qed
+      next 
+        show "A \<inter> B \<subseteq> ?I"
+          by auto 
+      qed
+      ultimately show "A \<inter> B \<in> \<A>" 
+        by simp 
+    qed
+  qed
+
+  ultimately show ?thesis 
+    using finite_inter_stable_def by auto 
+qed
+
+lemma c_cu_imp_ci_stable: 
+  assumes c_stable: "complement_stable \<A> \<Omega>"
+      and cu_stable: "countable_union_stable \<A>" 
+      and subseq: "\<forall>S\<in>\<A>. S \<subseteq> \<Omega>"
+    shows "countable_inter_stable \<A>"
+proof - 
+  have "\<A> \<noteq> {}"
+    using c_stable complement_stable_def by auto 
+
+  moreover have "\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A>) \<longrightarrow> ((\<Inter>i::nat. A\<^sub>n i) \<in> \<A>)" 
+  proof (rule allI; rule impI)
+    fix A\<^sub>n :: "nat \<Rightarrow> 'a set"
+    assume seq_in: "range A\<^sub>n \<subseteq> \<A>"
+    hence "range (\<lambda>n. \<Omega> - A\<^sub>n n) \<subseteq> \<A>"
+      using c_stable complement_stable_def by auto
+    hence "(\<Union>i::nat. \<Omega> - A\<^sub>n i) \<in> \<A>"
+      using countable_union_stable_def cu_stable by metis
+    hence "\<Omega> - (\<Union>i::nat. \<Omega> - A\<^sub>n i) \<in> \<A>" 
+      using c_stable complement_stable_def by auto
+
+    moreover have "\<forall>i. A\<^sub>n i \<subseteq> \<Omega>"
+      using seq_in subseq by auto 
+    hence "\<Omega> - (\<Union>i. \<Omega> - A\<^sub>n i) = (\<Inter>i. A\<^sub>n i)" 
+      by blast 
+
+    ultimately show "(\<Inter>i::nat. A\<^sub>n i) \<in> \<A>"
+      by simp 
+  qed 
+    
+  ultimately show ?thesis
+    by (simp add: countable_inter_stable_def) 
+qed 
+
+lemma c_ci_imp_cu_stable: 
+  assumes c_stable: "complement_stable \<A> \<Omega>"
+      and ci_stable: "countable_inter_stable \<A>" 
+      and subseq: "\<forall>S\<in>\<A>. S \<subseteq> \<Omega>"
+    shows "countable_union_stable \<A>"
+proof - 
+  have "\<A> \<noteq> {}"
+    using c_stable complement_stable_def by auto 
+
+  moreover have "\<forall>A\<^sub>n. (range A\<^sub>n \<subseteq> \<A>) \<longrightarrow> ((\<Union>i::nat. A\<^sub>n i) \<in> \<A>)" 
+  proof (rule allI; rule impI)
+    fix A\<^sub>n :: "nat \<Rightarrow> 'a set"
+    assume seq_in: "range A\<^sub>n \<subseteq> \<A>"
+    hence "range (\<lambda>n. \<Omega> - A\<^sub>n n) \<subseteq> \<A>"
+      using c_stable complement_stable_def by auto
+    hence "(\<Inter>i::nat. \<Omega> - A\<^sub>n i) \<in> \<A>"
+      using countable_inter_stable_def ci_stable by metis
+    hence "\<Omega> - (\<Inter>i::nat. \<Omega> - A\<^sub>n i) \<in> \<A>" 
+      using c_stable complement_stable_def by auto
+
+    moreover have "\<forall>i. A\<^sub>n i \<subseteq> \<Omega>"
+      using seq_in subseq by auto 
+    hence "\<Omega> - (\<Inter>i. \<Omega> - A\<^sub>n i) = (\<Union>i. A\<^sub>n i)" 
+      by blast 
+
+    ultimately show "(\<Union>i::nat. A\<^sub>n i) \<in> \<A>"
+      by simp 
+  qed 
+    
+  ultimately show ?thesis
+    by (simp add: countable_union_stable_def) 
+qed 
 
 definition non_decreasing_union_stable :: "'a set set \<Rightarrow> bool"
   where "non_decreasing_union_stable \<A> = 
@@ -340,5 +508,17 @@ next
   ultimately show "algebra \<Omega> \<A>" 
     by (simp add: algebra_iff_Un complement_stable_def finite_union_stable_def) 
 qed 
+
+lemma sigma_algebra_omega_c_cu_stable: 
+  shows "sigma_algebra \<Omega> \<A> = (\<A> \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> \<A> \<and> complement_stable \<A> \<Omega> \<and> countable_union_stable \<A>)"
+proof -
+  have "sigma_algebra \<Omega> \<A> = (algebra \<Omega> \<A> \<and> (\<forall>A\<^sub>n. range A\<^sub>n \<subseteq> \<A> \<longrightarrow> (\<Union>i::nat. A\<^sub>n i) \<in> \<A>))"
+    using sigma_algebra_iff by simp 
+  hence "sigma_algebra \<Omega> \<A> = (\<A> \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> \<A> \<and> complement_stable \<A> \<Omega> \<and> finite_union_stable \<A>
+        \<and> (\<forall>A\<^sub>n. range A\<^sub>n \<subseteq> \<A> \<longrightarrow> (\<Union>i::nat. A\<^sub>n i) \<in> \<A>))"
+    by (simp add: algebra_omega_c_fu_stable)
+  thus ?thesis
+    by (metis countable_union_stable_def empty_iff cu_imp_fu_stable)
+qed
 
 end
