@@ -65,6 +65,11 @@ lemma non_increasing_stay_out:
 definition general_union :: "'a set set \<Rightarrow> 'a set"
   where "general_union A = {x. \<exists>S. S \<in> A \<and> x \<in> S}"
 
+lemma notin_general_union:
+  assumes x_notin: "x \<notin> general_union A"
+  shows "\<forall>S\<in>A. x \<notin> S"
+  using x_notin general_union_def by fastforce
+
 lemma general_union_empty: "general_union {} = {}"
 proof - 
   have "\<not>(\<exists>x. x \<in> {y. \<exists>A. A \<in> {} \<and> y \<in> A})"
@@ -77,6 +82,17 @@ qed
 
 lemma general_union_singleton: "general_union {A} = A"
   by (simp add: general_union_def)
+
+lemma general_union_binary: 
+  "general_union {A, B} = A \<union> B"
+proof - 
+  have "general_union {A, B} = {x. \<exists>S. S \<in> {A, B} \<and> x \<in> S}"
+    by (simp add: general_union_def)
+  hence "general_union {A, B} = {x. x \<in> A \<or> x \<in> B}"
+    by fast 
+  thus ?thesis
+    by auto 
+qed
 
 lemma general_union_UNIV: "general_union UNIV = UNIV"
   using general_union_def by fast 
@@ -108,6 +124,21 @@ qed
 
 definition general_intersection :: "'a set set \<Rightarrow> 'a set"
   where "general_intersection A = {x. \<forall>S. S \<in> A \<longrightarrow> x \<in> S}"
+
+lemma general_intersection_binary: 
+  "general_intersection {A, B} = A \<inter> B"
+proof - 
+  have "general_intersection {A, B} = {x. \<forall>S. S \<in> {A, B} \<longrightarrow> x \<in> S}"
+    by (simp add: general_intersection_def)
+  hence "general_intersection {A, B} = {x. x \<in> A \<and> x \<in> B}"
+    by fast 
+  thus ?thesis
+    by auto 
+qed
+
+lemma notin_general_intersection:
+  shows "(x \<notin> general_intersection A) = (\<exists>S\<in>A. x \<notin> S)"
+  using general_intersection_def by fast 
 
 lemma general_intersection_empty: "general_intersection {} = UNIV"
 proof - 
@@ -156,61 +187,184 @@ next
   qed
 qed 
 
-definition set_complement :: "'a set \<Rightarrow> 'a set"
-  where "set_complement A = {x. x \<notin> A}"
 
-lemma general_de_morgan1: "set_complement (general_union A) = 
-                           general_intersection {C. \<exists>S\<in>A. C = set_complement S}"
+(* The union/intersection of a set collection is a subset of any set that all members belong to.*)
+lemma collection_union_subseq: 
+  assumes subseq: "\<forall>A\<in>\<A>. A \<subseteq> \<Omega>" 
+  shows "general_union \<A> \<subseteq> \<Omega>"
+proof 
+  fix x 
+  assume "x \<in> general_union \<A>"
+  hence "\<exists>S. S \<in> \<A> \<and> x \<in> S"
+    by (simp add: general_union_def)
+  then obtain S where "S \<in> \<A> \<and> x \<in> S"
+    by fast 
+  moreover have "S \<subseteq> \<Omega>"
+    by (simp add: calculation subseq)
+  ultimately show "x \<in> \<Omega>"
+    by auto 
+qed 
+
+lemma collection_inter_subseq: 
+  assumes subseq: "\<forall>A\<in>\<A>. A \<subseteq> \<Omega>"
+      and non_empty: "\<A> \<noteq> {}"
+  shows "general_intersection \<A> \<subseteq> \<Omega>"
+proof 
+  fix x 
+  assume x_in_inter: "x \<in> general_intersection \<A>"
+  hence "\<forall>S. S \<in> \<A> \<longrightarrow> x \<in> S"
+    by (simp add: general_intersection_def)
+  then obtain S where "S \<in> \<A> \<and> x \<in> S"
+    using non_empty by fast
+  moreover have "S \<subseteq> \<Omega>"
+    by (simp add: calculation subseq)
+  ultimately show "x \<in> \<Omega>"
+    by auto
+qed 
+
+
+definition set_complement :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a set"
+  where "set_complement A \<Omega> = (THE B. B = {x\<in>\<Omega>. x \<notin> A} \<and> A \<subseteq> \<Omega>)"
+
+lemma set_complement_meaning: 
+  assumes subseq: "A \<subseteq> B"
+  shows "set_complement A B = {x\<in>B. x \<notin> A}"
+  by (simp add: set_complement_def subseq)
+
+lemma set_complement_diff: 
+  assumes subseq: "A \<subseteq> B"
+  shows "set_complement A B = B - A"
+  using Diff_iff subseq set_complement_meaning by auto 
+
+lemma set_complement_self_inverse: 
+  assumes subseq: "A \<subseteq> B"
+    shows "set_complement (set_complement A B) B = A"
+  by (simp add: double_diff set_complement_diff subseq)
+
+lemma de_morgan_general_1: 
+  assumes subseq: "\<forall>A\<in>\<A>. A \<subseteq> \<Omega>" 
+      and non_empty_collection: "\<A> \<noteq> {}"
+  shows "set_complement (general_union \<A>) \<Omega> = 
+         general_intersection {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
 proof
-  show "set_complement (general_union A) \<subseteq> general_intersection {C. \<exists>S\<in>A. C = set_complement S}" 
+  show "set_complement (general_union \<A>) \<Omega> \<subseteq> general_intersection {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}" 
   proof 
     fix x 
-    assume "x \<in> set_complement (general_union A)"
-    hence "\<forall>S. S \<in> A \<longrightarrow> x \<in> (set_complement S)"
-      by (simp add: set_complement_def general_union_def)
-    hence "\<forall>C. (\<exists>S\<in>A. C = set_complement S) \<longrightarrow> x \<in> C" 
-      by auto
-    thus "x \<in> general_intersection {C. \<exists>S\<in>A. C = set_complement S}"
-      by (simp add: general_intersection_def)  
+    assume "x \<in> set_complement (general_union \<A>) \<Omega>"
+    moreover have "(general_union \<A>) \<subseteq> \<Omega>"
+      using subseq collection_union_subseq by auto 
+    hence "set_complement (general_union \<A>) \<Omega> = {x\<in>\<Omega>. x \<notin> (general_union \<A>)}"
+      using set_complement_meaning by auto 
+    ultimately have "x \<in> \<Omega> \<and> x \<notin> general_union \<A>" 
+      by simp 
+    hence "x \<in> \<Omega> \<and> \<not>(\<exists>S. S \<in> \<A> \<and> x \<in> S)"
+      using general_union_def by fast
+    hence "x \<in> \<Omega> \<and> (\<forall>S. S \<notin> \<A> \<or> x \<notin> S)"
+      by auto 
+    hence "\<forall>S\<in>\<A>. x \<in> set_complement S \<Omega>"
+      by (simp add: set_complement_meaning subseq) 
+    thus "x \<in> general_intersection {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
+      using general_intersection_def by fastforce 
   qed 
 next 
-  show "general_intersection {C. \<exists>S\<in>A. C = set_complement S} \<subseteq> set_complement (general_union A)"
+  show "general_intersection {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>} \<subseteq> set_complement (general_union \<A>) \<Omega>"
   proof 
     fix x 
-    assume "x \<in> general_intersection {C. \<exists>S\<in>A. C = set_complement S}"
-    hence "\<forall>C. (\<exists>S\<in>A. C = set_complement S) \<longrightarrow> x \<in> C"
-      by (simp add: general_intersection_def) 
-    hence "\<not>(\<exists>S. S \<in> A \<and> x \<in> S)"
-      using set_complement_def by fastforce 
-    thus "x \<in> set_complement (general_union A)"
-      by (simp add: set_complement_def general_union_def)  
+    assume "x \<in> general_intersection {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
+    hence "\<forall>C. (\<exists>S\<in>\<A>. C = set_complement S \<Omega>) \<longrightarrow> x \<in> C"
+      by (simp add: general_intersection_def)
+    hence "\<forall>S\<in>\<A>. x \<in> set_complement S \<Omega>"
+      by auto 
+    moreover have "\<forall>S\<in>\<A>. set_complement S \<Omega> = {x\<in>\<Omega>. x \<notin> S}"
+      using set_complement_meaning subseq by auto 
+    ultimately have "\<forall>S\<in>\<A>. (x \<in> \<Omega> \<and> x \<notin> S)" 
+      by simp
+    hence "x \<in> \<Omega> \<and> (\<forall>S\<in>\<A>. x \<notin> S)"
+      using non_empty_collection by auto 
+    hence "x \<in> \<Omega> \<and> x \<notin> general_union \<A>"
+      by (simp add: general_union_def)
+    thus "x \<in> set_complement (general_union \<A>) \<Omega>"
+      by (simp add: collection_union_subseq set_complement_meaning subseq) 
   qed 
 qed
 
-lemma general_de_morgan2: "set_complement (general_intersection A) = 
-                           general_union {C. \<exists>S\<in>A. C = set_complement S}"
+lemma de_morgan_general_2: 
+  assumes subseq: "\<forall>A\<in>\<A>. A \<subseteq> \<Omega>" 
+      and non_empty_collection: "\<A> \<noteq> {}"
+    shows "set_complement (general_intersection \<A>) \<Omega> = 
+           general_union {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
 proof 
-  show "set_complement (general_intersection A) \<subseteq> general_union {C. \<exists>S\<in>A. C = set_complement S}"
+  show "set_complement (general_intersection \<A>) \<Omega> \<subseteq> general_union {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
   proof 
     fix x 
-    assume "x \<in> set_complement (general_intersection A)"
-    hence "\<exists>S. S \<in> A \<and> x \<in> set_complement S"
-      by (simp add: set_complement_def general_intersection_def)
-    thus "x \<in> general_union {C. \<exists>S\<in>A. C = set_complement S}"
-      using general_union_def by fastforce
+    assume "x \<in> set_complement (general_intersection \<A>) \<Omega>"
+    moreover have "(general_intersection \<A>) \<subseteq> \<Omega>"
+      using subseq non_empty_collection collection_inter_subseq by auto 
+    hence "set_complement (general_intersection \<A>) \<Omega> = {x\<in>\<Omega>. x \<notin> (general_intersection \<A>)}"
+      using set_complement_meaning by auto 
+    ultimately have "x \<in> \<Omega> \<and> x \<notin> general_intersection \<A>" 
+      by simp 
+    hence "\<exists>S\<in>\<A>. x \<notin> S \<and> x \<in> \<Omega>"
+      by (metis notin_general_intersection)
+    hence "\<exists>S\<in>\<A>. x \<in> set_complement S \<Omega>"
+      by (simp add: set_complement_meaning subseq)
+    thus "x \<in> general_union {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
+      using general_union_def by fast
   qed 
 next 
-  show "general_union {C. \<exists>S\<in>A. C = set_complement S} \<subseteq> set_complement (general_intersection A)"
+  show "general_union {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>} \<subseteq> set_complement (general_intersection \<A>) \<Omega>"
   proof
     fix x 
-    assume "x \<in> general_union {C. \<exists>S\<in>A. C = set_complement S}"
-    hence "\<exists>C. \<exists>S\<in>A. C = set_complement S \<and> x \<in> C"
+    assume "x \<in> general_union {C. \<exists>S\<in>\<A>. C = set_complement S \<Omega>}"
+    hence "\<exists>C. \<exists>S\<in>\<A>. C = set_complement S \<Omega> \<and> x \<in> C"
       by (simp add: general_union_def)
-    hence "\<exists>S\<in>A. x \<notin> S"
-      by (metis set_complement_def mem_Collect_eq) 
-    thus "x \<in> set_complement (general_intersection A)" 
-      using set_complement_def general_intersection_def by fastforce
+    hence "\<exists>S\<in>\<A>. x \<in> set_complement S \<Omega>"
+      by auto 
+    hence "x \<in> \<Omega> \<and> (\<exists>S\<in>\<A>. x \<notin> S)"
+      by (simp add: subseq set_complement_meaning)
+    hence "x \<in> \<Omega> \<and> x \<notin> general_intersection \<A>"
+      by (simp add: notin_general_intersection)
+    thus "x \<in> set_complement (general_intersection \<A>) \<Omega>"
+      by (simp add: collection_inter_subseq non_empty_collection set_complement_diff subseq) 
   qed
+qed
+
+lemma de_morgan_binary_1: 
+assumes A_subseq: "A \<subseteq> \<Omega>" 
+    and B_subseq: "B \<subseteq> \<Omega>" 
+  shows "set_complement (A \<union> B) \<Omega> = (set_complement A \<Omega>) \<inter> (set_complement B \<Omega>)"
+proof - 
+  have "A \<union> B = general_union {A, B}"
+    by (simp add: general_union_binary)
+  moreover have "(set_complement A \<Omega>) \<inter> (set_complement B \<Omega>) = 
+                 general_intersection {set_complement A \<Omega>, set_complement B \<Omega>}"
+    by (simp add: general_intersection_binary)
+  moreover have "{set_complement A \<Omega>, set_complement B \<Omega>} = {C. \<exists>S\<in>{A, B}. C = set_complement S \<Omega>}"
+    by auto 
+  moreover have "set_complement (general_union {A, B}) \<Omega> = 
+                 general_intersection {C. \<exists>S\<in>{A, B}. C = set_complement S \<Omega>}"
+    by (simp add: A_subseq B_subseq de_morgan_general_1)
+  ultimately show ?thesis 
+    by simp 
+qed
+
+lemma de_morgan_binary_2: 
+assumes A_subseq: "A \<subseteq> \<Omega>" 
+    and B_subseq: "B \<subseteq> \<Omega>" 
+  shows "set_complement (A \<inter> B) \<Omega> = (set_complement A \<Omega>) \<union> (set_complement B \<Omega>)"
+proof - 
+  have "A \<inter> B = general_intersection {A, B}"
+    by (simp add: general_intersection_binary)
+  moreover have "(set_complement A \<Omega>) \<union> (set_complement B \<Omega>) = 
+                 general_union {set_complement A \<Omega>, set_complement B \<Omega>}"
+    by (simp add: general_union_binary)
+  moreover have "{set_complement A \<Omega>, set_complement B \<Omega>} = {C. \<exists>S\<in>{A, B}. C = set_complement S \<Omega>}"
+    by auto 
+  moreover have "set_complement (general_intersection {A, B}) \<Omega> = 
+                 general_union {C. \<exists>S\<in>{A, B}. C = set_complement S \<Omega>}"
+    by (simp add: A_subseq B_subseq de_morgan_general_2)
+  ultimately show ?thesis 
+    by simp 
 qed
 
 subsubsection "Limits of Sets"
@@ -435,8 +589,8 @@ qed
 
 subsection "Collections of Sets"
 
-definition complement_stable :: "'a set set \<Rightarrow> bool"
-  where "complement_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. set_complement A \<in> \<A>)"
+definition complement_stable :: "'a set set \<Rightarrow> 'a set \<Rightarrow> bool"
+  where "complement_stable \<A> \<Omega> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. set_complement A \<Omega> \<in> \<A>)"
 
 definition finite_union_stable :: "'a set set \<Rightarrow> bool"
   where "finite_union_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. A\<union>B \<in> \<A>)"
@@ -444,13 +598,55 @@ definition finite_union_stable :: "'a set set \<Rightarrow> bool"
 definition finite_inter_stable :: "'a set set \<Rightarrow> bool"
   where "finite_inter_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. A\<inter>B \<in> \<A>)"
 
+lemma c_fu_imp_fi_stable: 
+  assumes c_stable: "complement_stable \<A> \<Omega>"
+      and fu_stable: "finite_union_stable \<A>" 
+      and subseq: "\<forall>S\<in>\<A>. S \<subseteq> \<Omega>"
+    shows "finite_inter_stable \<A>"
+proof - 
+  have "\<A> \<noteq> {}"
+    using fu_stable finite_union_stable_def by auto 
+
+  moreover have "\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. A\<inter>B \<in> \<A>"
+  proof 
+    fix A
+    assume A_in: "A \<in> \<A>"
+    show "\<forall>B\<in>\<A>. A \<inter> B \<in> \<A>"
+    proof 
+      fix B
+      assume B_in: "B \<in> \<A>"
+      have "set_complement A \<Omega> \<in> \<A>"
+        using A_in c_stable complement_stable_def by auto
+      moreover have "set_complement B \<Omega> \<in> \<A>"
+        using B_in c_stable complement_stable_def by auto 
+      ultimately have "(set_complement A \<Omega>) \<union> (set_complement B \<Omega>) \<in> \<A>"
+        using finite_union_stable_def fu_stable by fast
+      moreover have "(set_complement A \<Omega>) \<union> (set_complement B \<Omega>) = set_complement (A \<inter> B) \<Omega>"
+        by (simp add: A_in B_in de_morgan_binary_2 subseq)
+      ultimately have "set_complement (set_complement (A \<inter> B) \<Omega>) \<Omega> \<in> \<A>"
+        using c_stable complement_stable_def by auto
+      thus "A \<inter> B \<in> \<A>"
+        by (metis A_in le_sup_iff set_complement_self_inverse subseq sup_inf_absorb) 
+    qed
+  qed
+
+  ultimately show "finite_inter_stable \<A>"
+    by (simp add: finite_inter_stable_def) 
+qed
+
+(* TODO: c_fi_imp_fu_stable*)
+
 definition set_diff_stable :: "'a set set \<Rightarrow> bool"
   where "set_diff_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<in>\<A>. \<forall>B\<in>\<A>. B \<subseteq> A \<longrightarrow> A-B \<in> \<A>)"
 
 definition countable_union_stable :: "'a set set \<Rightarrow> bool"
-  where "countable_union_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<^sub>n. ((\<forall>A\<in>A\<^sub>n. A\<in>\<A>) \<and> (countable A\<^sub>n)) \<longrightarrow> 
-  (general_union A\<^sub>n \<in> \<A>))"
+  where "countable_union_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<^sub>n. (\<forall>n::nat. A\<^sub>n n \<in> \<A>) \<longrightarrow> 
+  (general_union {S. \<exists>n. S = A\<^sub>n n} \<in> \<A>))"
 
-(* TODO - Complement should be w.r.t. some general set Omega, rather than UNIV*)
+(* TODO - disjoint_countable_union_stable *) 
+
+definition countable_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "countable_inter_stable \<A> \<equiv> \<A> \<noteq> {} \<and> (\<forall>A\<^sub>n. (\<forall>n::nat. A\<^sub>n n \<in> \<A>) \<longrightarrow> 
+  (general_intersection {S. \<exists>n. S = A\<^sub>n n} \<in> \<A>))"
 
 end
