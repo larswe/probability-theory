@@ -8,6 +8,8 @@ section "Sets"
 
 subsection "Set operations"
 
+text "Some sequences of sets behave monotonically with respect to the partial order of subsets."
+
 definition non_decreasing :: "(nat \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "non_decreasing A \<equiv> \<forall>n. A n \<subseteq> A (n + 1)"
 
@@ -56,17 +58,36 @@ lemma non_increasing_stay_out:
 
 subsection "Limits of Sets"
 
+text "Let's think about what the limit of a sequence of sets could be. 
+Whatever it is, it should at least contain those elements that eventually occur in every 
+single set of the sequence after some finite cutoff. 
+
+We call this minimal notion of a limit liminf."
+
 definition liminf :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "liminf A = (\<Union>n. (\<Inter>m\<in>{m'. m' \<ge> n}. A m))"
 
 lemma liminf_greater_n: "(x \<in> liminf A) = (\<exists>n.\<forall>m\<ge>n. x \<in> A m)"
   by (simp add: liminf_def) 
 
+text "Any sensible limit of a sequence of sets should include at least the elements of liminf.
+On the other hand, the limit should certainly not include any elements that do not occur in even a 
+single set after some finite cutoff.
+
+In other words, limsup contains all elements that, no matter how sparsely they may occur, never
+stop appearing as elements of sets in the sequence indefinitely. Elements that are not in this set
+should certainly not be a part of a any sensible limit of a sequence of sets."
+
 definition limsup :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "limsup A = (\<Inter>n. (\<Union>m\<in>{m'. m' \<ge> n}. A m))"
 
 lemma limsup_greater_n: "(x \<in> limsup A) = (\<forall>n.\<exists>m\<ge>n. x \<in> A m)"
   by (simp add: limsup_def) 
+
+text "Reassuringly, liminf, our favourite selection of elements that have to be in the limiting set,
+does not contain any elements that we have categorically excluded on pain of them not occuring in limsup.
+
+This is expected. Elements that eventually appear in every set do not disappear indefinitely."
 
 lemma liminf_subseq_limsup: "liminf A \<subseteq> limsup A"
 proof 
@@ -80,13 +101,24 @@ proof
     by (simp add: limsup_greater_n)
 qed 
 
+text "It's handy to notice that, if we wanted to know whether liminf and limsup are the same, say
+to define an unambiguous limit, we would only have to check whether liminf contains all elements 
+of limsup."
+
 lemma liminf_limsup_eq_cond: 
   assumes limsup_subseq_liminf: "limsup A \<subseteq> liminf A" 
   shows "liminf A = limsup A"
   by (simp add: limsup_subseq_liminf liminf_subseq_limsup subset_antisym)
 
+text "At the end of the day, it could reasonably be argued in favour of or against excluding 
+elements that are not in liminf, and elements that are not in limsup in our 'limit'. 
+Because we don't want to argue with anyone, we only define the limit in the case that it is uniquely
+determined by the two rules we have proposed."
+
 definition set_limit :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "set_limit A = (THE S. S = liminf A \<and> S = limsup A)"
+
+text "If the limit exists, it's then equal to both candidates. No surprise."
 
 lemma set_limit_eq_liminf: 
   assumes limsup_subseq_liminf: "limsup A \<subseteq> liminf A" 
@@ -102,6 +134,13 @@ lemma set_limit_eq_limsup:
   assumes limsup_subseq_liminf: "limsup A \<subseteq> liminf A" 
   shows "set_limit A = limsup A"
   by (simp add: liminf_limsup_eq_cond limsup_subseq_liminf set_limit_eq_liminf)
+
+text "There are two more or less obvious cases of when a set limit exists. 
+
+If all elements that appear in some set of the sequence also appear at all greater indices,
+any element that doesn't disappear from the sequence indefinitely will eventually start appearing 
+forever. Then the limit of the sequence is equal to the set of all elements that ever appear in
+a set of the sequence, as those are also the ones that appear forever."
 
 proposition non_decreasing_set_limit: 
   assumes non_decreasing: "non_decreasing A"
@@ -152,6 +191,22 @@ proof -
   ultimately show ?thesis
     by (simp add: set_limit_eq_limsup) 
 qed
+
+text "Secondly, if any element that disappears from the sequence is gone for good, all elements 
+that do not stop appearing forever (limsup) necessarily have to occur at every single index,
+which means they're in liminf. Notably, this limit has the property that all elements in the limit
+appear at every single index of the sequence.
+
+[There's some antisymmetry here. The elements not in the limit in the non-decreasing case had a 
+similar property, but with respect to being outside the sequence at every index from 0 to infinity.
+
+I wonder if, if a set collection is closed under complements and non-decreasing unions, 
+they are also closed under non-increasing intersections. I think so, because given the intersection
+of a nonincreasing sequence of sets, the sequence of its complements is non-decreasing. 
+The limit of that sequence is in the collection. Hence, so is its complement. And that's the limit
+of the initial sequence, as suggested by the antisymmetry above. 
+
+Sigma algebras are like that. So sigma algebras are monotone classes. Neat.]"
 
 proposition non_increasing_set_limit: 
   assumes non_increasing: "non_increasing A"
@@ -208,19 +263,52 @@ section "Collections of Sets"
 
 subsection "Rules for Collections of Sets"
 
-definition complement_stable :: "'a set set \<Rightarrow> 'a set \<Rightarrow> bool"
-  where "complement_stable M \<Omega> = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
+text "Set collections are commonly selected according to whether they are closed under certain 
+operations.  
+A collection of sets may, for instance, be closed under 
+(i) The complement.
+(ii) Finite unions.
+(iii) Finite intersections.
 
-definition finite_union_stable :: "'a set set \<Rightarrow> bool"
-  where "finite_union_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M))"
+Note: (i), (ii) and (i), (iii) are equivalent, due to deMorgan's formulas.
 
-lemma fu_stable_finite: 
-  assumes fu_stable: "finite_union_stable M"
+Note: We defined (ii) and (iii) with just a normal binary union / intersection. That's enough, it
+      follows for all finite families by induction.
+
+(iv) Set differences with respect to ones subset, provided that it's also in the collection 
+
+Note: If the subsets we want to be able to remove weren't required to be in the collection, this
+      condition would just mean 'closed under taking subsets'. 
+
+(v) Countable unions.
+(vi) Countable union of a family of sets as long as it is disjoint. 
+
+Note: This does not hold for finite, disjoint unions unless {} is in the set. That is because
+      there may be no infinite disjoint sequences of sets in the collection. 
+
+(vii) Countable intersections.
+
+Note: Yes, (i), (v) and (i), (vii) are also equivalent, also deMorgan.
+
+Note: If a set is closed under countable un./in., it is of course so under finite ones as well.
+
+(viii) The (countable) union (limit!) of non-decreasing sequences of sets.
+(ix) The (countable) intersection (limit!) of non-increasing sequences of sets. 
+"
+
+definition complement_closed :: "'a set set \<Rightarrow> 'a set \<Rightarrow> bool"
+  where "complement_closed M \<Omega> = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
+
+definition finite_union_closed :: "'a set set \<Rightarrow> bool"
+  where "finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M))"
+
+lemma fu_closed_finite: 
+  assumes fu_closed: "finite_union_closed M"
       and family_in: "\<forall>i\<in>I. A i \<in> M"
       and finite: "finite I"
       and non_empty: "I \<noteq> {}"
     shows "(\<Union>i\<in>I. A i) \<in> M"
-  using finite non_empty family_in fu_stable
+  using finite non_empty family_in fu_closed
 proof (induction I rule: finite_induct)
   case empty
   then show ?case
@@ -237,27 +325,27 @@ next
   next
     case False
     hence "(\<Union>i\<in>F. A i) \<in> M"
-      by (simp add: fu_stable insert.IH insert.prems(2)) 
+      by (simp add: fu_closed insert.IH insert.prems(2)) 
     moreover have "A x \<in> M"
       by (simp add: insert.prems(2))
     moreover have "\<Union> (A ` insert x F) = (\<Union>i\<in>F. A i) \<union> (A x)"
       by auto 
     ultimately show "\<Union> (A ` insert x F) \<in> M"
-      by (metis finite_union_stable_def fu_stable) 
+      by (metis finite_union_closed_def fu_closed) 
   qed
 qed 
     
 
-definition finite_inter_stable :: "'a set set \<Rightarrow> bool"
-  where "finite_inter_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M))"
+definition finite_inter_closed :: "'a set set \<Rightarrow> bool"
+  where "finite_inter_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M))"
 
-lemma fi_stable_finite: 
-  assumes fi_stable: "finite_inter_stable M"
+lemma fi_closed_finite: 
+  assumes fi_closed: "finite_inter_closed M"
       and family_in: "\<forall>i\<in>I. A i \<in> M"
       and finite: "finite I"
       and non_empty: "I \<noteq> {}"
     shows "(\<Inter>i\<in>I. A i) \<in> M"
-  using finite non_empty family_in fi_stable
+  using finite non_empty family_in fi_closed
 proof (induction I rule: finite_induct)
   case empty
   then show ?case
@@ -274,24 +362,24 @@ next
   next
     case False
     hence "(\<Inter>i\<in>F. A i) \<in> M"
-      by (simp add: fi_stable insert.IH insert.prems(2)) 
+      by (simp add: fi_closed insert.IH insert.prems(2)) 
     moreover have "A x \<in> M"
       by (simp add: insert.prems(2))
     moreover have "\<Inter> (A ` insert x F) = (\<Inter>i\<in>F. A i) \<inter> (A x)"
       by auto 
     ultimately show "\<Inter> (A ` insert x F) \<in> M"
-      by (metis finite_inter_stable_def fi_stable) 
+      by (metis finite_inter_closed_def fi_closed) 
   qed
 qed 
 
-lemma c_fu_imp_fi_stable: 
-  assumes c_stable: "complement_stable M \<Omega>"
-      and fu_stable: "finite_union_stable M" 
+lemma c_fu_imp_fi_closed: 
+  assumes c_closed: "complement_closed M \<Omega>"
+      and fu_closed: "finite_union_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "finite_inter_stable M"
+    shows "finite_inter_closed M"
 proof - 
   have "M \<noteq> {}"
-    using c_stable complement_stable_def by auto 
+    using c_closed complement_closed_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M" 
   proof 
@@ -302,15 +390,15 @@ proof -
       fix T
       assume "T\<in>M"
       hence "\<Omega>-T \<in> M"
-        using c_stable complement_stable_def by fast
+        using c_closed complement_closed_def by fast
       moreover have "\<Omega>-S \<in> M"
-        using S_in c_stable complement_stable_def by fast
+        using S_in c_closed complement_closed_def by fast
       ultimately have "(\<Omega>-S) \<union> (\<Omega>-T) \<in> M"
-        using fu_stable finite_union_stable_def by fast 
+        using fu_closed finite_union_closed_def by fast 
       hence "\<Omega> - (S \<inter> T) \<in> M"
         by (simp add: Diff_Int)
       hence "\<Omega> - (\<Omega> - (S \<inter> T)) \<in> M"
-        using c_stable complement_stable_def by fast
+        using c_closed complement_closed_def by fast
       moreover have "\<Omega> - (\<Omega> - (S \<inter> T)) = S \<inter> T"
         using S_in subseq by auto 
       ultimately show "S \<inter> T \<in> M" 
@@ -319,17 +407,17 @@ proof -
   qed 
     
   ultimately show ?thesis 
-    by (simp add: finite_inter_stable_def) 
+    by (simp add: finite_inter_closed_def) 
 qed 
 
-lemma c_fi_imp_fu_stable: 
-  assumes c_stable: "complement_stable M \<Omega>"
-      and fi_stable: "finite_inter_stable M" 
+lemma c_fi_imp_fu_closed: 
+  assumes c_closed: "complement_closed M \<Omega>"
+      and fi_closed: "finite_inter_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "finite_union_stable M"
+    shows "finite_union_closed M"
 proof - 
   have "M \<noteq> {}"
-    using c_stable complement_stable_def by auto 
+    using c_closed complement_closed_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M" 
   proof 
@@ -340,15 +428,15 @@ proof -
       fix T
       assume T_in: "T\<in>M"
       hence "\<Omega>-T \<in> M"
-        using c_stable complement_stable_def by fast
+        using c_closed complement_closed_def by fast
       moreover have "\<Omega>-S \<in> M"
-        using S_in c_stable complement_stable_def by fast
+        using S_in c_closed complement_closed_def by fast
       ultimately have "(\<Omega>-S) \<inter> (\<Omega>-T) \<in> M"
-        using fi_stable finite_inter_stable_def by fast 
+        using fi_closed finite_inter_closed_def by fast 
       hence "\<Omega> - (S \<union> T) \<in> M"
         by (simp add: Diff_Un)
       hence "\<Omega> - (\<Omega> - (S \<union> T)) \<in> M"
-        using c_stable complement_stable_def by fast
+        using c_closed complement_closed_def by fast
       moreover have "\<Omega> - (\<Omega> - (S \<union> T)) = S \<union> T"
         using S_in T_in subseq by auto 
       ultimately show "S \<union> T \<in> M" 
@@ -357,21 +445,21 @@ proof -
   qed 
     
   ultimately show ?thesis 
-    by (simp add: finite_union_stable_def) 
+    by (simp add: finite_union_closed_def) 
 qed
 
-definition set_diff_stable :: "'a set set \<Rightarrow> bool"
-  where "set_diff_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)))"
+definition set_diff_closed :: "'a set set \<Rightarrow> bool"
+  where "set_diff_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)))"
 
-definition countable_union_stable :: "'a set set \<Rightarrow> bool"
-  where "countable_union_stable M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
+definition countable_union_closed :: "'a set set \<Rightarrow> bool"
+  where "countable_union_closed M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
 
-lemma cu_imp_fu_stable: 
-  assumes cu_stable: "countable_union_stable M"
-  shows "finite_union_stable M"
+lemma cu_imp_fu_closed: 
+  assumes cu_closed: "countable_union_closed M"
+  shows "finite_union_closed M"
 proof - 
   have "M \<noteq> {}" 
-    using cu_stable countable_union_stable_def by auto 
+    using cu_closed countable_union_closed_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M" 
   proof 
@@ -386,7 +474,7 @@ proof -
       hence "range ?A \<subseteq> M"
         using S_in by auto 
       hence "?U \<in> M"
-        using cu_stable countable_union_stable_def by metis
+        using cu_closed countable_union_closed_def by metis
       moreover have "?U = S \<union> T" 
       proof 
         show "?U \<subseteq> S \<union> T"
@@ -420,22 +508,91 @@ proof -
   qed
 
   ultimately show ?thesis 
-    using finite_union_stable_def by auto 
+    using finite_union_closed_def by auto 
 qed
 
-definition disj_countable_union_stable :: "'a set set \<Rightarrow> bool"
-  where "disj_countable_union_stable M = 
+definition disj_countable_union_closed :: "'a set set \<Rightarrow> bool"
+  where "disj_countable_union_closed M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> disjoint_family A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
 
-definition countable_inter_stable :: "'a set set \<Rightarrow> bool"
-  where "countable_inter_stable M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
+definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
+  where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
 
-lemma ci_imp_fi_stable: 
-  assumes ci_stable: "countable_inter_stable M"
-  shows "finite_inter_stable M"
+lemma dcu_imp_dfu_closed:
+  assumes dcu_closed: "disj_countable_union_closed M"
+      and empty_in: "{} \<in> M"
+  shows "disj_finite_union_closed M"
+proof -
+  have "M \<noteq> {}" 
+    using dcu_closed unfolding disj_countable_union_closed_def by fast 
+
+  moreover have "\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)" 
+  proof 
+    fix S
+    assume S_in: "S \<in> M"
+    show "\<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)"
+    proof 
+      fix T
+      assume T_in: "T \<in> M"
+      show "(S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)"
+      proof 
+        assume disj: "S \<inter> T = {}"
+
+        let ?A = "(\<lambda>n. if n = (0::nat) then S else if n = (1::nat) then T else {})"
+        let ?U = "\<Union>(range ?A)"
+      
+        have "range ?A \<subseteq> M"
+          using S_in T_in empty_in by auto 
+        moreover have "disjoint_family ?A"
+          by (simp add: Int_commute disj disjoint_family_on_def) 
+        ultimately have"?U \<in> M"
+          using dcu_closed disj unfolding disj_countable_union_closed_def by blast  
+        moreover have "?U = S \<union> T" 
+        proof 
+          show "?U \<subseteq> S \<union> T"
+            by simp
+        next 
+          show "S \<union> T \<subseteq> ?U" 
+          proof 
+            fix x 
+            assume "x \<in> S \<union> T"
+            then consider (S) "x \<in> S" | (T) "x \<in> T"
+              by fast 
+            thus "x \<in> ?U"  
+            proof cases
+              case S
+              hence "x \<in> ?A 0"
+                by simp
+              thus ?thesis 
+                by fast 
+            next
+              case T
+                hence "x \<in> ?A 1"
+                  by simp
+                thus ?thesis 
+                  by fast 
+            qed 
+          qed
+        qed
+
+        ultimately show "S \<union> T \<in> M"
+          by fastforce 
+      qed
+    qed
+  qed
+  ultimately show ?thesis
+    by (simp add: disj_finite_union_closed_def)
+qed
+
+definition countable_inter_closed :: "'a set set \<Rightarrow> bool"
+  where "countable_inter_closed M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
+
+lemma ci_imp_fi_closed: 
+  assumes ci_closed: "countable_inter_closed M"
+  shows "finite_inter_closed M"
 proof - 
   have "M \<noteq> {}" 
-    using ci_stable countable_inter_stable_def by auto 
+    using ci_closed countable_inter_closed_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M" 
   proof 
@@ -450,7 +607,7 @@ proof -
       hence "range ?A \<subseteq> M"
         using S_in by auto 
       hence "?U \<in> M"
-        using ci_stable countable_inter_stable_def by metis
+        using ci_closed countable_inter_closed_def by metis
       moreover have "?U = S \<inter> T" 
       proof 
         show "?U \<subseteq> S \<inter> T"
@@ -474,28 +631,28 @@ proof -
   qed
 
   ultimately show ?thesis 
-    using finite_inter_stable_def by auto 
+    using finite_inter_closed_def by auto 
 qed
 
-lemma c_cu_imp_ci_stable: 
-  assumes c_stable: "complement_stable M \<Omega>"
-      and cu_stable: "countable_union_stable M" 
+lemma c_cu_imp_ci_closed: 
+  assumes c_closed: "complement_closed M \<Omega>"
+      and cu_closed: "countable_union_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "countable_inter_stable M"
+    shows "countable_inter_closed M"
 proof - 
   have "M \<noteq> {}"
-    using c_stable complement_stable_def by auto 
+    using c_closed complement_closed_def by auto 
 
   moreover have "\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)" 
   proof (rule allI; rule impI)
     fix A :: "nat \<Rightarrow> 'a set"
     assume seq_in: "range A \<subseteq> M"
     hence "range (\<lambda>n. \<Omega> - A n) \<subseteq> M"
-      using c_stable complement_stable_def by auto
+      using c_closed complement_closed_def by auto
     hence "(\<Union>i::nat. \<Omega> - A i) \<in> M"
-      using countable_union_stable_def cu_stable by metis
+      using countable_union_closed_def cu_closed by metis
     hence "\<Omega> - (\<Union>i::nat. \<Omega> - A i) \<in> M" 
-      using c_stable complement_stable_def by auto
+      using c_closed complement_closed_def by auto
 
     moreover have "\<forall>i. A i \<subseteq> \<Omega>"
       using seq_in subseq by auto 
@@ -507,28 +664,28 @@ proof -
   qed 
     
   ultimately show ?thesis
-    by (simp add: countable_inter_stable_def) 
+    by (simp add: countable_inter_closed_def) 
 qed 
 
-lemma c_ci_imp_cu_stable: 
-  assumes c_stable: "complement_stable M \<Omega>"
-      and ci_stable: "countable_inter_stable M" 
+lemma c_ci_imp_cu_closed: 
+  assumes c_closed: "complement_closed M \<Omega>"
+      and ci_closed: "countable_inter_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "countable_union_stable M"
+    shows "countable_union_closed M"
 proof - 
   have "M \<noteq> {}"
-    using c_stable complement_stable_def by auto 
+    using c_closed complement_closed_def by auto 
 
   moreover have "\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)" 
   proof (rule allI; rule impI)
     fix A :: "nat \<Rightarrow> 'a set"
     assume seq_in: "range A \<subseteq> M"
     hence "range (\<lambda>n. \<Omega> - A n) \<subseteq> M"
-      using c_stable complement_stable_def by auto
+      using c_closed complement_closed_def by auto
     hence "(\<Inter>i::nat. \<Omega> - A i) \<in> M"
-      using countable_inter_stable_def ci_stable by metis
+      using countable_inter_closed_def ci_closed by metis
     hence "\<Omega> - (\<Inter>i::nat. \<Omega> - A i) \<in> M" 
-      using c_stable complement_stable_def by auto
+      using c_closed complement_closed_def by auto
 
     moreover have "\<forall>i. A i \<subseteq> \<Omega>"
       using seq_in subseq by auto 
@@ -540,100 +697,269 @@ proof -
   qed 
     
   ultimately show ?thesis
-    by (simp add: countable_union_stable_def) 
+    by (simp add: countable_union_closed_def) 
 qed 
 
-definition non_decreasing_union_stable :: "'a set set \<Rightarrow> bool"
-  where "non_decreasing_union_stable M = 
+definition non_decreasing_union_closed :: "'a set set \<Rightarrow> bool"
+  where "non_decreasing_union_closed M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
 
-definition non_increasing_inter_stable :: "'a set set \<Rightarrow> bool"
-  where "non_increasing_inter_stable M = 
+definition non_increasing_inter_closed :: "'a set set \<Rightarrow> bool"
+  where "non_increasing_inter_closed M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> non_increasing A) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
 
 
 subsection "Algebras and Systems"
 
-lemma algebra_omega_c_fu_stable: 
-  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M)"
+text "For now, these are just some famous types of set collections that people choose when they want
+to prove something and need a convenient set to do it. We'll soon see what they're useful for.
+
+Approaching these set collections by studying their properties separately first seems really useful, 
+as we get an abstract idea of of what the concepts represent and how they are related."
+
+lemma algebra_omega_c_fu_closed: 
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M)"
 proof 
   assume alg: "algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> {} \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M"
-    using algebra_iff_Un complement_stable_def finite_union_stable_def by fastforce
+  hence "M \<subseteq> Pow \<Omega> \<and> {} \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+    using algebra_iff_Un complement_closed_def finite_union_closed_def by fastforce
   moreover have "\<Omega> \<in> M"
     by (simp add: alg algebra.top) 
-  ultimately show "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M" 
+  ultimately show "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M" 
     by simp 
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M"
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
   moreover have "{} \<in> M"
-    using calculation complement_stable_def Diff_cancel by metis 
+    using calculation complement_closed_def Diff_cancel by metis 
   ultimately show "algebra \<Omega> M" 
-    by (simp add: algebra_iff_Un complement_stable_def finite_union_stable_def) 
+    by (simp add: algebra_iff_Un complement_closed_def finite_union_closed_def) 
 qed 
 
-lemma algebra_omega_c_fi_stable: 
-  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_inter_stable M)"
+lemma algebra_omega_c_fi_closed: 
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_inter_closed M)"
 proof 
   assume "algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M"
-    by (simp add: algebra_omega_c_fu_stable)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_inter_stable M"
-    by (meson Pow_iff c_fu_imp_fi_stable subset_iff)
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+    by (simp add: algebra_omega_c_fu_closed)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_inter_closed M"
+    by (meson Pow_iff c_fu_imp_fi_closed subset_iff)
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_inter_stable M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M"
-    by (meson PowD c_fi_imp_fu_stable subset_eq)
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_inter_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+    by (meson PowD c_fi_imp_fu_closed subset_eq)
   thus "algebra \<Omega> M"
-    by (simp add: algebra_omega_c_fu_stable)
+    by (simp add: algebra_omega_c_fu_closed)
 qed 
 
-lemma sigma_algebra_omega_c_cu_stable: 
-  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_union_stable M)"
+lemma sigma_algebra_omega_c_cu_closed: 
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_union_closed M)"
 proof -
   have "sigma_algebra \<Omega> M = (algebra \<Omega> M \<and> (\<forall>A. range A \<subseteq> M \<longrightarrow> (\<Union>i::nat. A i) \<in> M))"
     using sigma_algebra_iff by simp 
-  hence "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> finite_union_stable M
+  hence "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M
         \<and> (\<forall>A. range A \<subseteq> M \<longrightarrow> (\<Union>i::nat. A i) \<in> M))"
-    by (simp add: algebra_omega_c_fu_stable)
+    by (simp add: algebra_omega_c_fu_closed)
   thus ?thesis
-    by (metis countable_union_stable_def empty_iff cu_imp_fu_stable)
+    by (metis countable_union_closed_def empty_iff cu_imp_fu_closed)
 qed
 
-lemma sigma_algebra_omega_c_ci_stable: 
-  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_inter_stable M)"
+lemma sigma_algebra_omega_c_ci_closed: 
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_inter_closed M)"
 proof 
   assume "sigma_algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_union_stable M"
-    by (simp add: sigma_algebra_omega_c_cu_stable)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_inter_stable M"
-    by (meson Pow_iff c_cu_imp_ci_stable subset_iff)
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_union_closed M"
+    by (simp add: sigma_algebra_omega_c_cu_closed)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_inter_closed M"
+    by (meson Pow_iff c_cu_imp_ci_closed subset_iff)
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_inter_stable M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> countable_union_stable M"
-    by (meson PowD c_ci_imp_cu_stable subset_eq)
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_inter_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_union_closed M"
+    by (meson PowD c_ci_imp_cu_closed subset_eq)
   thus "sigma_algebra \<Omega> M"
-    by (simp add: sigma_algebra_omega_c_cu_stable)
+    by (simp add: sigma_algebra_omega_c_cu_closed)
 qed
 
 locale monotone_class = subset_class + 
-  assumes ndu_stable: "non_decreasing_union_stable M"
-      and ncdi_stable: "non_increasing_inter_stable M"
+  assumes ndu_closed: "non_decreasing_union_closed M"
+      and ncdi_closed: "non_increasing_inter_closed M"
 
 locale pi_system = subset_class + 
-  assumes fi_stable: "finite_inter_stable M"
+  assumes fi_closed: "finite_inter_closed M"
 
-lemma dynkin_omega_c_disju_stable:
-  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable M \<Omega> \<and> disj_countable_union_stable M)"
+lemma Dynkin_omega_c_disju_closed:
+  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> disj_countable_union_closed M)"
 proof - 
   have "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> (\<forall>A. A \<in> M \<longrightarrow> \<Omega> - A \<in> M) \<and> 
        (\<forall>A::nat \<Rightarrow> 'a set. disjoint_family A \<longrightarrow> range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M))"
     unfolding Dynkin_system_def Dynkin_system_axioms_def subset_class_def by fast 
   thus ?thesis 
-    using complement_stable_def disj_countable_union_stable_def empty_iff by metis
+    using complement_closed_def disj_countable_union_closed_def empty_iff by metis
 qed
 
-lemma dynkin_omega_diff_ndu_stable:
-  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_stable M \<and> non_decreasing_union_stable M)" oops
+text "We want to show that the above and below definitions of Dynkin systems are equivalent.
+We show the needed inferences with respect to the relevant set collection rules."
+
+lemma dcu_c_empty_sd_closed: 
+  assumes dcu_closed: "disj_countable_union_closed M"
+      and c_closed: "complement_closed M \<Omega>"
+      and empty_in: "{} \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "set_diff_closed M"
+proof -  
+  have dfu_closed: "disj_finite_union_closed M"
+    by (simp add: dcu_imp_dfu_closed assms)
+
+  have "M \<noteq> {}" 
+    using c_closed complement_closed_def by auto 
+  moreover have " \<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)" 
+  proof 
+    fix S
+    assume S_in: "S \<in> M"
+    show "\<forall>T\<in>M. T \<subseteq> S \<longrightarrow> S - T \<in> M"
+    proof
+      fix T
+      assume T_in_collection: "T \<in> M"
+      show "T \<subseteq> S \<longrightarrow> S - T \<in> M"
+      proof 
+        assume T_in_set: "T \<subseteq> S"
+        have "\<Omega> - S \<in> M"
+          using c_closed unfolding complement_closed_def using S_in by auto
+        moreover have "T \<inter> (\<Omega> - S) = {}"
+          using T_in_set by auto
+        ultimately have "T \<union> (\<Omega> - S) \<in> M"  
+          using dfu_closed unfolding disj_finite_union_closed_def using S_in T_in_collection by simp
+        hence "\<Omega> - (T \<union> (\<Omega> - S)) \<in> M"
+          using c_closed complement_closed_def by blast
+        moreover have "\<Omega> - (T \<union> (\<Omega> - S)) = S - T"
+          using Diff_Diff_Int M_pow S_in by auto 
+        ultimately show "S - T \<in> M"
+          by simp 
+      qed
+    qed
+  qed
+  ultimately show ?thesis
+    by (simp add: set_diff_closed_def)
+qed
+
+lemma min_nat_elem: 
+  assumes non_empty: "\<exists>n::nat. n \<in> S" 
+  shows "\<exists>n. n \<in> S \<and> (\<forall>m\<in>S. m \<ge> n)" 
+proof -
+  obtain P where P_fun: "P = (\<lambda>n. n \<in> S)"
+    by simp
+  have "(\<exists>n. P n) = (\<exists>n. P n \<and> (\<forall>m<n. \<not> P m))"
+    using exists_least_iff by auto
+  thus ?thesis using P_fun non_empty
+    using leI by auto
+qed 
+
+lemma dcu_c_empty_ncu_closed: 
+  assumes dcu_closed: "disj_countable_union_closed M"
+      and c_closed: "complement_closed M \<Omega>"
+      and empty_in: "{} \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "non_decreasing_union_closed M"
+proof - 
+  have "M \<noteq> {}"
+    using empty_in by auto 
+
+  moreover have "\<forall>A. (range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)" 
+  proof 
+    fix A 
+    show "(range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)"
+    proof 
+      let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n-1))"
+      assume sequence: "range A \<subseteq> M \<and> non_decreasing A"
+      hence "disjoint_family ?B"
+      proof - 
+        have "\<forall>m n. m \<noteq> n \<longrightarrow> ?B m \<inter> ?B n = {}" 
+        proof 
+          fix m 
+          show "\<forall>n. m \<noteq> n \<longrightarrow> ?B m \<inter> ?B n = {}"
+          proof 
+            fix n
+            show "m \<noteq> n \<longrightarrow> ?B m \<inter> ?B n = {}"
+            proof 
+              assume "m \<noteq> n"
+              then consider (M) "m > n" | (N) "m < n"
+                by fastforce
+              thus "?B m \<inter> ?B n = {}" 
+              proof cases
+                case M
+                have "\<forall>x\<in>?B m. x \<notin> A (m-1)"
+                  using M by auto
+                hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> A k"
+                  using sequence non_decreasing_stay_in sequence by fastforce 
+                hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> ?B k"
+                  by (metis Diff_iff)
+                then show ?thesis
+                  using M by blast 
+              next
+                case N
+                have "\<forall>x\<in>?B n. x \<notin> A (n-1)"
+                  using N by auto
+                hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> A k"
+                  using sequence non_decreasing_stay_in sequence by fastforce 
+                hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> ?B k"
+                  by (metis Diff_iff)
+                then show ?thesis
+                  using N by blast
+              qed 
+            qed
+          qed
+        qed
+        thus ?thesis
+          by (simp add: disjoint_family_on_def)
+      qed 
+      moreover have "set_diff_closed M"
+        using M_pow c_closed dcu_c_empty_sd_closed dcu_closed empty_in by auto
+      hence "range ?B \<subseteq> M"
+        using UNIV_I diff_le_self image_subset_iff non_decreasing_multistep sequence set_diff_closed_def
+        by (smt (verit, best)) (* TODO - Make this whole proof a lot more succinct.*) 
+      ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
+        using dcu_closed unfolding disj_countable_union_closed_def by blast
+      moreover have "(\<Union>i::nat. A i) = (\<Union>i::nat. ?B i)"  
+      proof 
+        show "\<Union> (range A) \<subseteq> (\<Union>i. ?B i)"
+        proof 
+          fix x 
+          assume "x \<in> \<Union> (range A)"
+          hence "\<exists>n. n \<in> {n'. x \<in> A n'}"
+            by simp
+          hence "\<exists>n. n \<in> {n'. x \<in> A n'} \<and> (\<forall>m\<in>{n'. x \<in> A n'}. n \<le> m)"
+            using min_nat_elem by meson 
+          then obtain n where "x \<in> A n \<and> (\<forall>m<n. x \<notin> A m)"
+            by (metis less_le_not_le mem_Collect_eq)
+          hence "x \<in> ?B n"
+            by fastforce 
+          thus "x \<in> (\<Union>i::nat. ?B i)"
+            by fast 
+        qed
+      next 
+        show "(\<Union>i. ?B i) \<subseteq> \<Union> (range A)"
+          by auto
+      qed 
+      ultimately show "((\<Union>i::nat. A i) \<in> M)"
+        by simp 
+    qed 
+  qed
+
+  ultimately show ?thesis
+    by (simp add: non_decreasing_union_closed_def)
+qed
+ 
+
+lemma Dynkin_omega_diff_ndu_closed:
+  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M)"
+proof
+  assume dynk: "Dynkin_system \<Omega> M"
+  hence "{} \<in> M"
+    by (simp add: Dynkin_system.empty)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
+    by (metis Dynkin_omega_c_disju_closed dcu_c_empty_ncu_closed dcu_c_empty_sd_closed dynk)
+next
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
+  thus "Dynkin_system \<Omega> M" sorry 
+qed 
 
 end
