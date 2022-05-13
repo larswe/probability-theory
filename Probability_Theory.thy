@@ -484,6 +484,33 @@ proof -
     by (simp add: complement_closed_def) 
 qed
 
+lemma c_fu_omega_imp_sd_closed:
+  assumes c_closed: "complement_closed \<Omega> M" 
+      and fu_closed: "finite_union_closed M"
+      and omega: "\<Omega> \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "set_diff_closed M"
+proof - 
+  have "M \<noteq> {}"
+    using omega by auto
+  moreover have "\<forall>S\<in>M. \<forall>T\<in>M. T \<subseteq> S \<longrightarrow> S - T \<in> M"
+  proof (rule ; rule ; rule) 
+    fix S T :: "'a set"
+    assume T_M: "T \<in> M" and S_M: "S \<in> M" and T_S: "T \<subseteq> S"
+    hence "S - T = \<Omega> - ((\<Omega> - S) \<union> T)"
+      using M_pow by auto
+    moreover have "\<Omega> - S \<in> M"
+      using S_M c_closed complement_closed_def by blast
+    hence "(\<Omega> - S) \<union> T \<in> M"
+      using T_M fu_closed unfolding finite_union_closed_def by simp 
+    ultimately show "S - T \<in> M"  
+      using c_closed M_pow unfolding complement_closed_def by simp 
+  qed 
+  ultimately show ?thesis 
+    unfolding set_diff_closed_def by auto 
+qed
+  
+
 subsubsection "Countable unions and intersections"
 
 definition countable_union_closed :: "'a set set \<Rightarrow> bool"
@@ -879,10 +906,12 @@ proof -
     using disj_countable_union_closed_def by metis 
 qed
 
-lemma ndu_c_Omega_imp_cu_closed:
+lemma ndu_c_fu_Omega_imp_cu_closed:
   assumes ndu_closed: "non_decreasing_union_closed M"
+      and fu_closed: "finite_union_closed M" (* TODO - Needed ? *)
       and c_closed: "complement_closed \<Omega> M"
       and Omega: "\<Omega> \<in> M" 
+      and M_pow: "M \<subseteq> Pow \<Omega>"
     shows "countable_union_closed M"
 proof - 
   have M_non_empty: "M \<noteq> {}"
@@ -907,7 +936,9 @@ proof -
           using A_within_M by auto
       next
         case (Suc n)
-        (* TODO - This isn't quite right. Set diff closure would help. *)
+        have sd_closed: "set_diff_closed M"
+          using c_fu_omega_imp_sd_closed fu_closed Omega M_pow c_closed by auto 
+        (* TODO - This needs fixing. *)
         have "\<Union> (A ` {0..Suc n}) = \<Omega> - ((\<Omega> - A (Suc n)) - \<Union> (A ` {0..n}))" sorry
         then show "\<Union> (A ` {0..Suc n}) \<in> M" sorry
       qed
