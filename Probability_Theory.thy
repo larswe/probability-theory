@@ -261,6 +261,21 @@ qed
 
 section "Collections of Sets"
 
+subsection "Auxiliary lemmas"
+
+text "Every non-empty set of natural numbers has a least element."
+lemma min_nat_elem: 
+  assumes non_empty: "\<exists>n::nat. n \<in> S" 
+  shows "\<exists>n. n \<in> S \<and> (\<forall>m\<in>S. m \<ge> n)" 
+proof -
+  obtain P where P_fun: "P = (\<lambda>n. n \<in> S)"
+    by simp
+  have "(\<exists>n. P n) = (\<exists>n. P n \<and> (\<forall>m<n. \<not> P m))"
+    using exists_least_iff by auto
+  thus ?thesis using P_fun non_empty
+    using leI by auto
+qed 
+
 subsection "Rules for Collections of Sets"
 
 text "Set collections are commonly selected according to whether they are closed under certain 
@@ -295,6 +310,8 @@ Note: If a set is closed under countable un./in., it is of course so under finit
 (viii) The (countable) union (limit!) of non-decreasing sequences of sets.
 (ix) The (countable) intersection (limit!) of non-increasing sequences of sets. 
 "
+
+subsubsection "Complements, finite unions and intersections"
 
 definition complement_closed :: "'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
   where "complement_closed \<Omega> M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
@@ -448,8 +465,26 @@ proof -
     by (simp add: finite_union_closed_def) 
 qed
 
+subsubsection "Set Difference"
+
 definition set_diff_closed :: "'a set set \<Rightarrow> bool"
   where "set_diff_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)))"
+
+lemma sd_omega_imp_c_closed: 
+  assumes sd_closed: "set_diff_closed M"
+      and omega: "\<Omega> \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "complement_closed \<Omega> M"
+proof - 
+  have "M \<noteq> {}"
+    using omega by auto
+  moreover have "\<forall>S\<in>M. \<Omega> - S \<in> M"
+    by (meson M_pow PowD in_mono omega sd_closed set_diff_closed_def)
+  ultimately show ?thesis
+    by (simp add: complement_closed_def) 
+qed
+
+subsubsection "Countable unions and intersections"
 
 definition countable_union_closed :: "'a set set \<Rightarrow> bool"
   where "countable_union_closed M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
@@ -509,79 +544,6 @@ proof -
 
   ultimately show ?thesis 
     using finite_union_closed_def by auto 
-qed
-
-definition disj_countable_union_closed :: "'a set set \<Rightarrow> bool"
-  where "disj_countable_union_closed M = 
-        ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> disjoint_family A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
-
-definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
-  where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
-
-lemma dcu_imp_dfu_closed:
-  assumes dcu_closed: "disj_countable_union_closed M"
-      and empty_in: "{} \<in> M"
-  shows "disj_finite_union_closed M"
-proof -
-  have "M \<noteq> {}" 
-    using dcu_closed unfolding disj_countable_union_closed_def by fast 
-
-  moreover have "\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)" 
-  proof 
-    fix S
-    assume S_in: "S \<in> M"
-    show "\<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)"
-    proof 
-      fix T
-      assume T_in: "T \<in> M"
-      show "(S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)"
-      proof 
-        assume disj: "S \<inter> T = {}"
-
-        let ?A = "(\<lambda>n. if n = (0::nat) then S else if n = (1::nat) then T else {})"
-        let ?U = "\<Union>(range ?A)"
-      
-        have "range ?A \<subseteq> M"
-          using S_in T_in empty_in by auto 
-        moreover have "disjoint_family ?A"
-          by (simp add: Int_commute disj disjoint_family_on_def) 
-        ultimately have"?U \<in> M"
-          using dcu_closed disj unfolding disj_countable_union_closed_def by blast  
-        moreover have "?U = S \<union> T" 
-        proof 
-          show "?U \<subseteq> S \<union> T"
-            by simp
-        next 
-          show "S \<union> T \<subseteq> ?U" 
-          proof 
-            fix x 
-            assume "x \<in> S \<union> T"
-            then consider (S) "x \<in> S" | (T) "x \<in> T"
-              by fast 
-            thus "x \<in> ?U"  
-            proof cases
-              case S
-              hence "x \<in> ?A 0"
-                by simp
-              thus ?thesis 
-                by fast 
-            next
-              case T
-                hence "x \<in> ?A 1"
-                  by simp
-                thus ?thesis 
-                  by fast 
-            qed 
-          qed
-        qed
-
-        ultimately show "S \<union> T \<in> M"
-          by fastforce 
-      qed
-    qed
-  qed
-  ultimately show ?thesis
-    by (simp add: disj_finite_union_closed_def)
 qed
 
 definition countable_inter_closed :: "'a set set \<Rightarrow> bool"
@@ -700,16 +662,373 @@ proof -
     by (simp add: countable_union_closed_def) 
 qed 
 
+subsubsection "Disjoint unions"
+
+definition disj_countable_union_closed :: "'a set set \<Rightarrow> bool"
+  where "disj_countable_union_closed M = 
+        ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> disjoint_family A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
+
+
+definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
+  where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
+
+lemma dcu_imp_dfu_closed:
+  assumes dcu_closed: "disj_countable_union_closed M"
+      and empty_in: "{} \<in> M"
+  shows "disj_finite_union_closed M"
+proof -
+  have "M \<noteq> {}" 
+    using dcu_closed unfolding disj_countable_union_closed_def by fast 
+
+  moreover have "\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)" 
+  proof 
+    fix S
+    assume S_in: "S \<in> M"
+    show "\<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)"
+    proof 
+      fix T
+      assume T_in: "T \<in> M"
+      show "(S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)"
+      proof 
+        assume disj: "S \<inter> T = {}"
+
+        let ?A = "(\<lambda>n. if n = (0::nat) then S else if n = (1::nat) then T else {})"
+        let ?U = "\<Union>(range ?A)"
+      
+        have "range ?A \<subseteq> M"
+          using S_in T_in empty_in by auto 
+        moreover have "disjoint_family ?A"
+          by (simp add: Int_commute disj disjoint_family_on_def) 
+        ultimately have"?U \<in> M"
+          using dcu_closed disj unfolding disj_countable_union_closed_def by blast  
+        moreover have "?U = S \<union> T" 
+        proof 
+          show "?U \<subseteq> S \<union> T"
+            by simp
+        next 
+          show "S \<union> T \<subseteq> ?U" 
+          proof 
+            fix x 
+            assume "x \<in> S \<union> T"
+            then consider (S) "x \<in> S" | (T) "x \<in> T"
+              by fast 
+            thus "x \<in> ?U"  
+            proof cases
+              case S
+              hence "x \<in> ?A 0"
+                by simp
+              thus ?thesis 
+                by fast 
+            next
+              case T
+                hence "x \<in> ?A 1"
+                  by simp
+                thus ?thesis 
+                  by fast 
+            qed 
+          qed
+        qed
+
+        ultimately show "S \<union> T \<in> M"
+          by fastforce 
+      qed
+    qed
+  qed
+  ultimately show ?thesis
+    by (simp add: disj_finite_union_closed_def)
+qed
+
+
+
+lemma dcu_c_empty_imp_sd_closed: 
+  assumes dcu_closed: "disj_countable_union_closed M"
+      and c_closed: "complement_closed \<Omega> M"
+      and empty_in: "{} \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "set_diff_closed M"
+proof -  
+  have dfu_closed: "disj_finite_union_closed M"
+    by (simp add: dcu_imp_dfu_closed assms)
+
+  have "M \<noteq> {}" 
+    using c_closed complement_closed_def by auto 
+  moreover have " \<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)" 
+  proof 
+    fix S
+    assume S_in: "S \<in> M"
+    show "\<forall>T\<in>M. T \<subseteq> S \<longrightarrow> S - T \<in> M"
+    proof
+      fix T
+      assume T_in_collection: "T \<in> M"
+      show "T \<subseteq> S \<longrightarrow> S - T \<in> M"
+      proof 
+        assume T_in_set: "T \<subseteq> S"
+        have "\<Omega> - S \<in> M"
+          using c_closed unfolding complement_closed_def using S_in by auto
+        moreover have "T \<inter> (\<Omega> - S) = {}"
+          using T_in_set by auto
+        ultimately have "T \<union> (\<Omega> - S) \<in> M"  
+          using dfu_closed unfolding disj_finite_union_closed_def using S_in T_in_collection by simp
+        hence "\<Omega> - (T \<union> (\<Omega> - S)) \<in> M"
+          using c_closed complement_closed_def by blast
+        moreover have "\<Omega> - (T \<union> (\<Omega> - S)) = S - T"
+          using Diff_Diff_Int M_pow S_in by auto 
+        ultimately show "S - T \<in> M"
+          by simp 
+      qed
+    qed
+  qed
+  ultimately show ?thesis
+    by (simp add: set_diff_closed_def)
+qed
+
+subsubsection "Monotonic sequences"
+
 definition non_decreasing_union_closed :: "'a set set \<Rightarrow> bool"
   where "non_decreasing_union_closed M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
+
+lemma cu_imp_ndu_closed:
+  assumes cu_closed: "countable_union_closed M"
+  shows "non_decreasing_union_closed M"
+  using cu_closed unfolding countable_union_closed_def non_decreasing_union_closed_def by simp
+
+lemma sd_omega_imp_ndu_closed: 
+  assumes sd_closed: "set_diff_closed M"
+      and ndu_closed: "non_decreasing_union_closed M"
+      and omega: "\<Omega> \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>" 
+    shows "disj_countable_union_closed M" 
+proof - 
+  have "M \<noteq> {}"
+    using omega by auto  
+
+  moreover have "\<forall>A. (range A \<subseteq> M \<and> disjoint_family A \<longrightarrow> (\<Union>i::nat. A i) \<in> M)"
+  proof (rule ; rule)
+    fix A :: "nat \<Rightarrow> 'a set"
+    assume A_disj_in_M: "range A \<subseteq> M \<and> disjoint_family A"
+    let ?B = "(\<lambda>n. (\<Union>i\<in>{i::nat. i \<le> n}. A i))"
+    have "non_decreasing ?B" 
+      unfolding non_decreasing_def by (simp add: UN_subset_iff UN_upper) 
+      
+    moreover have "\<forall>n. ?B n \<in> M" 
+    proof 
+      fix n 
+      show "?B n \<in> M" 
+        using A_disj_in_M
+      proof (induction n)
+        case 0
+        have "\<Union> (A ` {i::nat. i \<le> 0}) = A 0"
+          by auto
+        then show "\<Union> (A ` {i::nat. i \<le> 0}) \<in> M"
+          using A_disj_in_M by blast
+      next
+        case (Suc n)
+        have "{i::nat. i \<le> (Suc n)} = insert (Suc n) {i::nat. i \<le> n}" 
+          unfolding insert_def by auto 
+        hence "?B (Suc n) = A (Suc n) \<union> ?B n"
+          by simp
+        moreover have "A (Suc n) \<subseteq> \<Omega>"
+          using A_disj_in_M M_pow by blast
+        moreover have B_in_Omega: "?B n \<subseteq> \<Omega>"
+          using M_pow Suc.IH Suc.prems by blast
+        ultimately have "?B (Suc n) = \<Omega> - ((\<Omega> - A (Suc n)) - ?B n)"
+          by blast 
+      
+        moreover have "(\<Omega> - A (Suc n)) \<in> M"
+          by (meson A_disj_in_M M_pow complement_closed_def omega range_subsetD sd_closed 
+             sd_omega_imp_c_closed)
+        moreover have "?B n \<subseteq> (\<Omega> - A (Suc n))" 
+        proof 
+          fix x
+          assume x_in_B: "x \<in> ?B n"
+          hence x_in_smaller_A: "\<exists>m<(Suc n). x \<in> A m"
+            using neq0_conv by fastforce 
+          hence "x \<in> \<Omega>"
+            using B_in_Omega x_in_B by blast
+          moreover have "x \<notin> A (Suc n)"
+            using x_in_smaller_A A_disj_in_M unfolding disjoint_family_on_def
+            by (metis UNIV_I disjoint_iff less_SucI not_less_eq)
+          ultimately show "x \<in> (\<Omega> - A (Suc n))"
+            by simp 
+        qed
+        moreover have "((\<Omega> - A (Suc n)) - ?B n) \<in> M"
+          using calculation sd_closed Suc.IH Suc.prems unfolding set_diff_closed_def by blast 
+        ultimately show "range A \<subseteq> M \<and> disjoint_family A \<Longrightarrow> \<Union> (A ` {i. i \<le> Suc n}) \<in> M"
+          using omega M_pow sd_closed unfolding set_diff_closed_def
+          by (metis Sup_le_iff Union_Pow_eq Union_mono) 
+      qed
+    qed  
+    hence "range ?B \<subseteq> M" 
+      by auto 
+
+    ultimately have "\<Union> (range ?B) \<in> M"
+      using ndu_closed unfolding non_decreasing_union_closed_def by blast 
+
+    moreover have "\<Union> (range ?B) = \<Union> (range A)"
+      by fastforce 
+
+    ultimately show "(\<Union>i::nat. A i) \<in> M"
+      by auto 
+  qed 
+  ultimately show ?thesis 
+    using disj_countable_union_closed_def by metis 
+qed
+
+lemma dcu_c_empty_imp_ncu_closed: 
+  assumes dcu_closed: "disj_countable_union_closed M"
+      and c_closed: "complement_closed \<Omega> M"
+      and empty_in: "{} \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "non_decreasing_union_closed M"
+proof - 
+  have "M \<noteq> {}"
+    using empty_in by auto 
+
+  moreover have "\<forall>A. (range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)" 
+  proof (rule allI; rule impI)
+    fix A :: "nat \<Rightarrow> 'a set" 
+    assume A_is_nondecreasing_within_M: "range A \<subseteq> M \<and> non_decreasing A"
+    let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n-1))"
+
+    have "disjoint_family ?B"
+      unfolding disjoint_family_on_def
+    proof (rule; rule; rule)
+      fix m n :: nat 
+      assume "m \<noteq> n" 
+      then consider (M) "m > n" | (N) "n > m"
+        using nat_neq_iff by blast
+       thus "?B m \<inter> ?B n = {}"
+        proof cases
+          case M
+          hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> A k"
+            using A_is_nondecreasing_within_M non_decreasing_stay_in by fastforce
+          hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> ?B k"
+            using Diff_iff by metis 
+          then show ?thesis
+            using M by blast
+        next
+          case N
+          hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> A k"
+            using A_is_nondecreasing_within_M non_decreasing_stay_in by fastforce 
+          hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> ?B k"
+            by (metis Diff_iff)
+          then show ?thesis
+            using N by blast
+        qed 
+      qed
+       
+      moreover have sd_closed: "set_diff_closed M"
+        using assms dcu_c_empty_imp_sd_closed by auto
+      hence "\<forall>n. ?B n \<in> M" 
+      proof - 
+        have "\<forall>n. ?B n = A 0 \<or> ?B n = A n - A (n-1)"
+          by simp
+        moreover have "\<forall>n. A n \<in> M"
+          using A_is_nondecreasing_within_M by blast
+        ultimately show "\<forall>n. ?B n \<in> M"
+          using sd_closed unfolding set_diff_closed_def
+          by (simp add: A_is_nondecreasing_within_M non_decreasing_multistep) 
+      qed
+      hence "range ?B \<subseteq> M"
+        by blast
+        
+      ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
+        using dcu_closed unfolding disj_countable_union_closed_def by blast
+
+      moreover have "\<Union> (range A) \<subseteq> (\<Union>i. ?B i)"
+      proof 
+        fix x 
+        assume "x \<in> \<Union> (range A)"
+        hence "\<exists>n. n \<in> {n'. x \<in> A n'}"
+          by simp 
+        then obtain n where "n \<in> {n'. x \<in> A n'} \<and> (\<forall>m\<in>{n'. x \<in> A n'}. n \<le> m)"
+          using min_nat_elem by meson
+        hence "x \<in> ?B n"
+          by fastforce 
+        thus "x \<in> (\<Union>i::nat. ?B i)"
+          by fast 
+      qed
+      hence "(\<Union>i::nat. A i) = (\<Union>i::nat. ?B i)" 
+        by auto 
+
+      ultimately show "((\<Union>i::nat. A i) \<in> M)"
+        by simp 
+    qed 
+
+  ultimately show ?thesis
+    by (simp add: non_decreasing_union_closed_def)
+qed
+
 
 definition non_increasing_inter_closed :: "'a set set \<Rightarrow> bool"
   where "non_increasing_inter_closed M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> non_increasing A) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
 
+lemma ci_imp_nii_closed: 
+  assumes ci_closed: "countable_inter_closed M"
+  shows "non_increasing_inter_closed M"
+  using ci_closed unfolding countable_inter_closed_def non_increasing_inter_closed_def by simp 
+
+lemma ndu_c_imp_nii_closed: 
+  assumes ndu_closed: "non_decreasing_union_closed M"
+      and c_closed: "complement_closed \<Omega> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "non_increasing_inter_closed M"
+proof - 
+  have "M \<noteq> {}"
+    using c_closed complement_closed_def by auto
+
+  moreover have "\<forall>A. range A \<subseteq> M \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> M"
+  proof (rule; rule)
+    fix A :: "nat \<Rightarrow> 'a set"
+    let ?B = "(\<lambda>n. \<Omega> - A n)"
+    assume A_non_inc_within_M: "range A \<subseteq> M \<and> non_increasing A"
+
+    hence "non_decreasing ?B" 
+      unfolding non_increasing_def non_decreasing_def by auto 
+    moreover have "range ?B \<subseteq> M"
+      using A_non_inc_within_M c_closed complement_closed_def by blast  
+    ultimately have "\<Union> (range ?B) \<in> M" 
+      using ndu_closed unfolding non_decreasing_union_closed_def by blast 
+    hence "\<Omega> - \<Union> (range ?B) \<in> M" 
+      using c_closed unfolding complement_closed_def by auto 
+
+    moreover have "\<Inter> (range A) = \<Omega> - \<Union> (range ?B)" 
+    proof (rule ; rule)
+      fix x
+      assume "x \<in> \<Inter> (range A)"
+      hence x_in_all: "\<forall>n. x \<in> A n"
+        by blast 
+      moreover have "\<forall>n. A n \<in> M"
+        by (simp add: A_non_inc_within_M range_subsetD) 
+      ultimately have "x \<in> \<Omega>" 
+        using M_pow by auto 
+         
+      moreover have "x \<notin> (\<Union>n. \<Omega> - A n)"
+        by (simp add: x_in_all) 
+
+      ultimately show "x \<in> \<Omega> - (\<Union>n. \<Omega> - A n)" 
+        by auto 
+    next 
+      fix x
+      assume "x \<in> \<Omega> - (\<Union>n. \<Omega> - A n)" 
+      thus "x \<in> \<Inter> (range A)"
+        by simp  
+    qed 
+
+    ultimately show "\<Inter> (range A) \<in> M"
+      by presburger 
+  qed
+
+  ultimately show ?thesis 
+    unfolding non_increasing_inter_closed_def by auto 
+qed
+
 
 subsection "Algebras and Systems"
+
+subsubsection "Exemplary Set Collections"
 
 text "For now, these are just some famous types of set collections that people choose when they want
 to prove something and need a convenient set to do it. We'll soon see what they're useful for.
@@ -796,261 +1115,10 @@ proof -
     using complement_closed_def disj_countable_union_closed_def empty_iff by metis
 qed
 
-text "We want to show that the above and below definitions of Dynkin systems are equivalent.
-We show the needed inferences with respect to the relevant set collection rules."
-
-lemma dcu_c_empty_imp_sd_closed: 
-  assumes dcu_closed: "disj_countable_union_closed M"
-      and c_closed: "complement_closed \<Omega> M"
-      and empty_in: "{} \<in> M"
-      and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "set_diff_closed M"
-proof -  
-  have dfu_closed: "disj_finite_union_closed M"
-    by (simp add: dcu_imp_dfu_closed assms)
-
-  have "M \<noteq> {}" 
-    using c_closed complement_closed_def by auto 
-  moreover have " \<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)" 
-  proof 
-    fix S
-    assume S_in: "S \<in> M"
-    show "\<forall>T\<in>M. T \<subseteq> S \<longrightarrow> S - T \<in> M"
-    proof
-      fix T
-      assume T_in_collection: "T \<in> M"
-      show "T \<subseteq> S \<longrightarrow> S - T \<in> M"
-      proof 
-        assume T_in_set: "T \<subseteq> S"
-        have "\<Omega> - S \<in> M"
-          using c_closed unfolding complement_closed_def using S_in by auto
-        moreover have "T \<inter> (\<Omega> - S) = {}"
-          using T_in_set by auto
-        ultimately have "T \<union> (\<Omega> - S) \<in> M"  
-          using dfu_closed unfolding disj_finite_union_closed_def using S_in T_in_collection by simp
-        hence "\<Omega> - (T \<union> (\<Omega> - S)) \<in> M"
-          using c_closed complement_closed_def by blast
-        moreover have "\<Omega> - (T \<union> (\<Omega> - S)) = S - T"
-          using Diff_Diff_Int M_pow S_in by auto 
-        ultimately show "S - T \<in> M"
-          by simp 
-      qed
-    qed
-  qed
-  ultimately show ?thesis
-    by (simp add: set_diff_closed_def)
-qed
-
-lemma min_nat_elem: 
-  assumes non_empty: "\<exists>n::nat. n \<in> S" 
-  shows "\<exists>n. n \<in> S \<and> (\<forall>m\<in>S. m \<ge> n)" 
-proof -
-  obtain P where P_fun: "P = (\<lambda>n. n \<in> S)"
-    by simp
-  have "(\<exists>n. P n) = (\<exists>n. P n \<and> (\<forall>m<n. \<not> P m))"
-    using exists_least_iff by auto
-  thus ?thesis using P_fun non_empty
-    using leI by auto
-qed 
-
-lemma dcu_c_empty_imp_ncu_closed: 
-  assumes dcu_closed: "disj_countable_union_closed M"
-      and c_closed: "complement_closed \<Omega> M"
-      and empty_in: "{} \<in> M"
-      and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "non_decreasing_union_closed M"
-proof - 
-  have "M \<noteq> {}"
-    using empty_in by auto 
-
-  moreover have "\<forall>A. (range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)" 
-  proof 
-    fix A 
-    show "(range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)"
-    proof 
-      let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n-1))"
-      assume sequence: "range A \<subseteq> M \<and> non_decreasing A"
-      hence "disjoint_family ?B"
-      proof - 
-        have "\<forall>m n. m \<noteq> n \<longrightarrow> ?B m \<inter> ?B n = {}" 
-        proof 
-          fix m 
-          show "\<forall>n. m \<noteq> n \<longrightarrow> ?B m \<inter> ?B n = {}"
-          proof 
-            fix n
-            show "m \<noteq> n \<longrightarrow> ?B m \<inter> ?B n = {}"
-            proof 
-              assume "m \<noteq> n"
-              then consider (M) "m > n" | (N) "m < n"
-                by fastforce
-              thus "?B m \<inter> ?B n = {}" 
-              proof cases
-                case M
-                have "\<forall>x\<in>?B m. x \<notin> A (m-1)"
-                  using M by auto
-                hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> A k"
-                  using sequence non_decreasing_stay_in sequence by fastforce 
-                hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> ?B k"
-                  by (metis Diff_iff)
-                then show ?thesis
-                  using M by blast 
-              next
-                case N
-                have "\<forall>x\<in>?B n. x \<notin> A (n-1)"
-                  using N by auto
-                hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> A k"
-                  using sequence non_decreasing_stay_in sequence by fastforce 
-                hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> ?B k"
-                  by (metis Diff_iff)
-                then show ?thesis
-                  using N by blast
-              qed 
-            qed
-          qed
-        qed
-        thus ?thesis
-          by (simp add: disjoint_family_on_def)
-      qed 
-      moreover have "set_diff_closed M"
-        using M_pow c_closed dcu_closed empty_in dcu_c_empty_imp_sd_closed by auto
-      hence "range ?B \<subseteq> M"
-        using UNIV_I diff_le_self image_subset_iff non_decreasing_multistep sequence set_diff_closed_def
-        by (smt (verit, best))
-      ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
-        using dcu_closed unfolding disj_countable_union_closed_def by blast
-      moreover have "(\<Union>i::nat. A i) = (\<Union>i::nat. ?B i)"  
-      proof 
-        show "\<Union> (range A) \<subseteq> (\<Union>i. ?B i)"
-        proof 
-          fix x 
-          assume "x \<in> \<Union> (range A)"
-          hence "\<exists>n. n \<in> {n'. x \<in> A n'}"
-            by simp
-          hence "\<exists>n. n \<in> {n'. x \<in> A n'} \<and> (\<forall>m\<in>{n'. x \<in> A n'}. n \<le> m)"
-            using min_nat_elem by meson 
-          then obtain n where "x \<in> A n \<and> (\<forall>m<n. x \<notin> A m)"
-            by (metis less_le_not_le mem_Collect_eq)
-          hence "x \<in> ?B n"
-            by fastforce 
-          thus "x \<in> (\<Union>i::nat. ?B i)"
-            by fast 
-        qed
-      next 
-        show "(\<Union>i. ?B i) \<subseteq> \<Union> (range A)"
-          by auto
-      qed 
-      ultimately show "((\<Union>i::nat. A i) \<in> M)"
-        by simp 
-    qed 
-  qed
-
-  ultimately show ?thesis
-    by (simp add: non_decreasing_union_closed_def)
-qed
-
-lemma sd_omega_imp_c_closed: 
-  assumes sd_closed: "set_diff_closed M"
-      and omega: "\<Omega> \<in> M"
-      and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "complement_closed \<Omega> M"
-proof - 
-  have "M \<noteq> {}"
-    using omega by auto
-  moreover have "\<forall>S\<in>M. \<Omega> - S \<in> M"
-    by (meson M_pow PowD in_mono omega sd_closed set_diff_closed_def)
-  ultimately show ?thesis
-    by (simp add: complement_closed_def) 
-qed
-
-lemma sd_omega_imp_ndu_closed: 
-  assumes sd_closed: "set_diff_closed M"
-      and ndu_closed: "non_decreasing_union_closed M"
-      and omega: "\<Omega> \<in> M"
-      and M_pow: "M \<subseteq> Pow \<Omega>" 
-    shows "disj_countable_union_closed M" 
-proof - 
-  have "M \<noteq> {}"
-    using omega by auto  
-
-  moreover have "\<forall>A. range A \<subseteq> M \<and> disjoint_family A \<longrightarrow> (\<Union>i::nat. A i) \<in> M"
-  proof 
-    fix A :: "nat \<Rightarrow> 'a set"
-    show "range A \<subseteq> M \<and> disjoint_family A \<longrightarrow> \<Union> (range A) \<in> M"
-    proof
-      let ?B = "(\<lambda>n. (\<Union>i\<in>{i::nat. i \<le> n}. A i))"
-
-      have "non_decreasing ?B" 
-        unfolding non_decreasing_def by (simp add: UN_subset_iff UN_upper) 
-      moreover assume A_assm: "range A \<subseteq> M \<and> disjoint_family A"
-      have "\<forall>n. ?B n \<in> M" 
-      proof 
-        fix n 
-        show "?B n \<in> M" 
-          using A_assm 
-        proof (induction n)
-          case 0
-          have "\<Union> (A ` {i::nat. i \<le> 0}) = A 0"
-            by auto
-          then show "\<Union> (A ` {i::nat. i \<le> 0}) \<in> M"
-            using A_assm by blast
-        next
-          case (Suc n)
-          have "{i::nat. i \<le> (Suc n)} = insert (Suc n) {i::nat. i \<le> n}" 
-            unfolding insert_def by auto 
-          hence "?B (Suc n) = A (Suc n) \<union> ?B n"
-            by simp
-          moreover have "A (Suc n) \<in> M"
-            using A_assm by blast
-          hence "A (Suc n) \<subseteq> \<Omega>"
-            using M_pow by blast
-          moreover have B_in_M: "?B n \<in> M"
-            by (simp add: Suc.IH Suc.prems) 
-          hence B_in_Omega: "?B n \<subseteq> \<Omega>"
-            using M_pow by blast
-          ultimately have "?B (Suc n) = \<Omega> - ((\<Omega> - A (Suc n)) \<inter> (\<Omega> - ?B n))"
-            by (metis Diff_Diff_Int Diff_Int Int_absorb1)
-          hence "?B (Suc n) = \<Omega> - ((\<Omega> - A (Suc n)) - ?B n)"
-            by blast
-          moreover have "(\<Omega> - A (Suc n)) \<in> M"
-            by (meson A_assm M_pow complement_closed_def omega range_subsetD sd_closed sd_omega_imp_c_closed)
-          moreover have "?B n \<subseteq> (\<Omega> - A (Suc n))" 
-          proof 
-            fix x
-            assume x_in: "x \<in> ?B n"
-            hence x_in_smaller: "\<exists>m<(Suc n). x \<in> A m"
-              using x_in neq0_conv by fastforce 
-            hence "x \<in> \<Omega>"
-              using B_in_Omega x_in by blast
-            moreover have "x \<notin> A (Suc n)"
-              using x_in_smaller A_assm unfolding disjoint_family_on_def
-              by (metis UNIV_I disjoint_iff less_irrefl_nat) 
-            ultimately show "x \<in> (\<Omega> - A (Suc n))"
-              by simp 
-          qed
-          moreover have "((\<Omega> - A (Suc n)) - ?B n) \<in> M"
-            using B_in_M calculation sd_closed unfolding set_diff_closed_def by blast 
-          ultimately show "range A \<subseteq> M \<and> disjoint_family A \<Longrightarrow> \<Union> (A ` {i. i \<le> Suc n}) \<in> M"
-            using omega M_pow sd_closed unfolding set_diff_closed_def
-            by (metis Sup_le_iff Union_Pow_eq Union_mono) 
-        qed
-      qed  
-      hence "range ?B \<subseteq> M" 
-        by auto 
-      ultimately have "\<Union> (range ?B) \<in> M"
-        using ndu_closed unfolding non_decreasing_union_closed_def by blast
-      moreover have "\<Union> (range ?B) = \<Union> (range A)"
-        by fastforce 
-      ultimately show "(\<Union>i::nat. A i) \<in> M"
-        by auto 
-    qed 
-  qed 
-
-  ultimately show ?thesis 
-    using disj_countable_union_closed_def by metis 
-qed 
-
+text "We show an equivalent definition of a Dynkin system."
 lemma Dynkin_omega_diff_ndu_closed:
-  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M)"
+  shows "Dynkin_system \<Omega> M = 
+         (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M)"
 proof
   assume dynk: "Dynkin_system \<Omega> M"
   hence "{} \<in> M"
@@ -1065,4 +1133,29 @@ next
     using Dynkin_omega_c_disju_closed by auto 
 qed 
 
+subsubsection "Relations between Set Collections"
+
+lemma sigma_algebra_is_algebra: 
+  assumes sa: "sigma_algebra \<Omega> M"
+  shows "algebra \<Omega> M"
+  using sa sigma_algebra_def by auto 
+
+lemma sigma_algebra_is_monotone_class: 
+  assumes sa: "sigma_algebra \<Omega> M"
+  shows "monotone_class \<Omega> M"
+proof - 
+  have sa_properties: "M \<subseteq> Pow \<Omega> \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
+    using sa sigma_algebra_omega_c_cu_closed by auto
+
+  hence "M \<subseteq> Pow \<Omega>"
+    by simp
+  moreover have "non_decreasing_union_closed M"
+    by (simp add: cu_imp_ndu_closed sa_properties)
+  moreover have "non_increasing_inter_closed M"
+    using sa_properties calculation ndu_c_imp_nii_closed by auto
+
+  ultimately show ?thesis
+    unfolding monotone_class_def monotone_class_axioms_def subset_class_def by auto 
+qed
+   
 end
