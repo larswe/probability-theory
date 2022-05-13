@@ -672,6 +672,10 @@ definition disj_countable_union_closed :: "'a set set \<Rightarrow> bool"
 definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
   where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
 
+(* TODO - Could show by induction that this suffices for finite unions of size n *)
+
+(* TODO - The below is too strong, it suffices if there is an infinite sequence
+          of sets within M. {} \<in> M is just particularly convenient.*)
 lemma dcu_imp_dfu_closed:
   assumes dcu_closed: "disj_countable_union_closed M"
       and empty_in: "{} \<in> M"
@@ -875,7 +879,57 @@ proof -
     using disj_countable_union_closed_def by metis 
 qed
 
-lemma dcu_c_empty_imp_ncu_closed: 
+lemma ndu_c_Omega_imp_cu_closed:
+  assumes ndu_closed: "non_decreasing_union_closed M"
+      and c_closed: "complement_closed \<Omega> M"
+      and Omega: "\<Omega> \<in> M" 
+    shows "countable_union_closed M"
+proof - 
+  have M_non_empty: "M \<noteq> {}"
+    using Omega by auto 
+
+  moreover have "\<forall>A::(nat \<Rightarrow> 'a set). range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M"
+  proof (rule ; rule)
+    fix A :: "nat \<Rightarrow> 'a set"
+    let ?B = "(\<lambda>n. (\<Union>i\<in>{0..n}. A i))"
+    have "non_decreasing ?B" 
+      unfolding non_decreasing_def by (simp add: UN_subset_iff UN_upper)
+    moreover assume A_within_M: "range A \<subseteq> M"
+    have "\<forall>n::nat. ?B n \<in> M" 
+    proof (rule)
+      fix n
+      show "?B n \<in> M"
+      proof (induction n)
+        case 0
+        have "\<Union> (A ` {0..0}) = A 0"
+          by auto 
+        then show "\<Union> (A ` {0..0}) \<in> M"
+          using A_within_M by auto
+      next
+        case (Suc n)
+        (* TODO - This isn't quite right. Set diff closure would help. *)
+        have "\<Union> (A ` {0..Suc n}) = \<Omega> - ((\<Omega> - A (Suc n)) - \<Union> (A ` {0..n}))" sorry
+        then show "\<Union> (A ` {0..Suc n}) \<in> M" sorry
+      qed
+    qed 
+    hence "range ?B \<subseteq> M" 
+      by blast 
+   
+    ultimately have "\<Union> (range ?B) \<in> M"
+      using M_non_empty ndu_closed unfolding non_decreasing_union_closed_def by auto 
+
+    moreover have "\<Union> (range ?B) = \<Union> (range A)" 
+      by fastforce 
+
+    ultimately show "\<Union> (range A) \<in> M" 
+      by auto 
+  qed
+
+  ultimately show ?thesis
+    unfolding countable_union_closed_def by auto
+qed
+
+lemma dcu_c_empty_imp_ndu_closed: 
   assumes dcu_closed: "disj_countable_union_closed M"
       and c_closed: "complement_closed \<Omega> M"
       and empty_in: "{} \<in> M"
@@ -1124,7 +1178,7 @@ proof
   hence "{} \<in> M"
     by (simp add: Dynkin_system.empty)
   thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
-    by (metis Dynkin_omega_c_disju_closed dcu_c_empty_imp_ncu_closed dcu_c_empty_imp_sd_closed dynk)
+    by (metis Dynkin_omega_c_disju_closed dcu_c_empty_imp_ndu_closed dcu_c_empty_imp_sd_closed dynk)
 next
   assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
   hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> disj_countable_union_closed M"
@@ -1134,6 +1188,18 @@ next
 qed 
 
 subsubsection "Relations between Set Collections"
+
+lemma algebra_is_pi_system:
+  assumes a: "algebra \<Omega> M"
+  shows "pi_system \<Omega> M"
+proof - 
+  have "subset_class \<Omega> M"
+    by (meson algebra_omega_c_fi_closed a subset_class.intro)
+  moreover have "finite_inter_closed M"
+    using algebra_omega_c_fi_closed a by blast  
+  ultimately show ?thesis
+    by (simp add: pi_system.intro pi_system_axioms.intro) 
+qed
 
 lemma sigma_algebra_is_algebra: 
   assumes sa: "sigma_algebra \<Omega> M"
@@ -1156,6 +1222,22 @@ proof -
 
   ultimately show ?thesis
     unfolding monotone_class_def monotone_class_axioms_def subset_class_def by auto 
+qed
+
+lemma algebra_is_sigma_algebra_iff_monotone: 
+  assumes a: "algebra \<Omega> M"
+  shows "sigma_algebra \<Omega> M = monotone_class \<Omega> M"
+proof 
+  assume "sigma_algebra \<Omega> M"
+  thus "monotone_class \<Omega> M"
+    by (simp add: sigma_algebra_is_monotone_class) 
+next
+  assume "monotone_class \<Omega> M"
+  hence "\<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> non_decreasing_union_closed M"
+    using algebra_omega_c_fi_closed a monotone_class.ndu_closed by blast
+  hence "countable_union_closed M" sorry 
+  thus "sigma_algebra \<Omega> M"
+    by (meson algebra_omega_c_fi_closed a sigma_algebra_omega_c_cu_closed) 
 qed
    
 end
