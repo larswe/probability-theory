@@ -296,8 +296,8 @@ Note: If a set is closed under countable un./in., it is of course so under finit
 (ix) The (countable) intersection (limit!) of non-increasing sequences of sets. 
 "
 
-definition complement_closed :: "'a set set \<Rightarrow> 'a set \<Rightarrow> bool"
-  where "complement_closed M \<Omega> = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
+definition complement_closed :: "'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
+  where "complement_closed \<Omega> M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
 
 definition finite_union_closed :: "'a set set \<Rightarrow> bool"
   where "finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M))"
@@ -373,7 +373,7 @@ next
 qed 
 
 lemma c_fu_imp_fi_closed: 
-  assumes c_closed: "complement_closed M \<Omega>"
+  assumes c_closed: "complement_closed \<Omega> M"
       and fu_closed: "finite_union_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
     shows "finite_inter_closed M"
@@ -411,7 +411,7 @@ proof -
 qed 
 
 lemma c_fi_imp_fu_closed: 
-  assumes c_closed: "complement_closed M \<Omega>"
+  assumes c_closed: "complement_closed \<Omega> M"
       and fi_closed: "finite_inter_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
     shows "finite_union_closed M"
@@ -635,7 +635,7 @@ proof -
 qed
 
 lemma c_cu_imp_ci_closed: 
-  assumes c_closed: "complement_closed M \<Omega>"
+  assumes c_closed: "complement_closed \<Omega> M"
       and cu_closed: "countable_union_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
     shows "countable_inter_closed M"
@@ -668,7 +668,7 @@ proof -
 qed 
 
 lemma c_ci_imp_cu_closed: 
-  assumes c_closed: "complement_closed M \<Omega>"
+  assumes c_closed: "complement_closed \<Omega> M"
       and ci_closed: "countable_inter_closed M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
     shows "countable_union_closed M"
@@ -718,17 +718,17 @@ Approaching these set collections by studying their properties separately first 
 as we get an abstract idea of of what the concepts represent and how they are related."
 
 lemma algebra_omega_c_fu_closed: 
-  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M)"
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M)"
 proof 
   assume alg: "algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> {} \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> {} \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
     using algebra_iff_Un complement_closed_def finite_union_closed_def by fastforce
   moreover have "\<Omega> \<in> M"
     by (simp add: alg algebra.top) 
-  ultimately show "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M" 
+  ultimately show "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M" 
     by simp 
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
   moreover have "{} \<in> M"
     using calculation complement_closed_def Diff_cancel by metis 
   ultimately show "algebra \<Omega> M" 
@@ -736,27 +736,27 @@ next
 qed 
 
 lemma algebra_omega_c_fi_closed: 
-  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_inter_closed M)"
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_inter_closed M)"
 proof 
   assume "algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
     by (simp add: algebra_omega_c_fu_closed)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_inter_closed M"
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_inter_closed M"
     by (meson Pow_iff c_fu_imp_fi_closed subset_iff)
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_inter_closed M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M"
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_inter_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
     by (meson PowD c_fi_imp_fu_closed subset_eq)
   thus "algebra \<Omega> M"
     by (simp add: algebra_omega_c_fu_closed)
 qed 
 
 lemma sigma_algebra_omega_c_cu_closed: 
-  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_union_closed M)"
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M)"
 proof -
   have "sigma_algebra \<Omega> M = (algebra \<Omega> M \<and> (\<forall>A. range A \<subseteq> M \<longrightarrow> (\<Union>i::nat. A i) \<in> M))"
     using sigma_algebra_iff by simp 
-  hence "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> finite_union_closed M
+  hence "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M
         \<and> (\<forall>A. range A \<subseteq> M \<longrightarrow> (\<Union>i::nat. A i) \<in> M))"
     by (simp add: algebra_omega_c_fu_closed)
   thus ?thesis
@@ -764,16 +764,16 @@ proof -
 qed
 
 lemma sigma_algebra_omega_c_ci_closed: 
-  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_inter_closed M)"
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_inter_closed M)"
 proof 
   assume "sigma_algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_union_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
     by (simp add: sigma_algebra_omega_c_cu_closed)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_inter_closed M"
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_inter_closed M"
     by (meson Pow_iff c_cu_imp_ci_closed subset_iff)
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_inter_closed M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> countable_union_closed M"
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_inter_closed M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
     by (meson PowD c_ci_imp_cu_closed subset_eq)
   thus "sigma_algebra \<Omega> M"
     by (simp add: sigma_algebra_omega_c_cu_closed)
@@ -787,7 +787,7 @@ locale pi_system = subset_class +
   assumes fi_closed: "finite_inter_closed M"
 
 lemma Dynkin_omega_c_disju_closed:
-  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed M \<Omega> \<and> disj_countable_union_closed M)"
+  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> disj_countable_union_closed M)"
 proof - 
   have "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> (\<forall>A. A \<in> M \<longrightarrow> \<Omega> - A \<in> M) \<and> 
        (\<forall>A::nat \<Rightarrow> 'a set. disjoint_family A \<longrightarrow> range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M))"
@@ -799,9 +799,9 @@ qed
 text "We want to show that the above and below definitions of Dynkin systems are equivalent.
 We show the needed inferences with respect to the relevant set collection rules."
 
-lemma dcu_c_empty_sd_closed: 
+lemma dcu_c_empty_imp_sd_closed: 
   assumes dcu_closed: "disj_countable_union_closed M"
-      and c_closed: "complement_closed M \<Omega>"
+      and c_closed: "complement_closed \<Omega> M"
       and empty_in: "{} \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
     shows "set_diff_closed M"
@@ -853,9 +853,9 @@ proof -
     using leI by auto
 qed 
 
-lemma dcu_c_empty_ncu_closed: 
+lemma dcu_c_empty_imp_ncu_closed: 
   assumes dcu_closed: "disj_countable_union_closed M"
-      and c_closed: "complement_closed M \<Omega>"
+      and c_closed: "complement_closed \<Omega> M"
       and empty_in: "{} \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
     shows "non_decreasing_union_closed M"
@@ -912,7 +912,7 @@ proof -
           by (simp add: disjoint_family_on_def)
       qed 
       moreover have "set_diff_closed M"
-        using M_pow c_closed dcu_c_empty_sd_closed dcu_closed empty_in by auto
+        using M_pow c_closed dcu_closed empty_in dcu_c_empty_imp_sd_closed by auto
       hence "range ?B \<subseteq> M"
         using UNIV_I diff_le_self image_subset_iff non_decreasing_multistep sequence set_diff_closed_def
         by (smt (verit, best)) (* TODO - Make this whole proof a lot more succinct.*) 
@@ -947,7 +947,27 @@ proof -
   ultimately show ?thesis
     by (simp add: non_decreasing_union_closed_def)
 qed
- 
+
+lemma sd_omega_imp_c_closed: 
+  assumes sd_closed: "set_diff_closed M"
+      and omega: "\<Omega> \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>"
+    shows "complement_closed \<Omega> M"
+proof - 
+  have "M \<noteq> {}"
+    using omega by auto
+  moreover have "\<forall>S\<in>M. \<Omega> - S \<in> M"
+    by (meson M_pow PowD in_mono omega sd_closed set_diff_closed_def)
+  ultimately show ?thesis
+    by (simp add: complement_closed_def) 
+qed
+
+lemma sd_omega_imp_ndu_closed: 
+  assumes sd_closed: "set_diff_closed M"
+      and ndu_closed: "non_decreasing_union_closed M"
+      and omega: "\<Omega> \<in> M"
+      and M_pow: "M \<subseteq> Pow \<Omega>" 
+    shows "disj_countable_union_closed M" sorry 
 
 lemma Dynkin_omega_diff_ndu_closed:
   shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M)"
@@ -956,10 +976,13 @@ proof
   hence "{} \<in> M"
     by (simp add: Dynkin_system.empty)
   thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
-    by (metis Dynkin_omega_c_disju_closed dcu_c_empty_ncu_closed dcu_c_empty_sd_closed dynk)
+    by (metis Dynkin_omega_c_disju_closed dcu_c_empty_imp_ncu_closed dcu_c_empty_imp_sd_closed dynk)
 next
   assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
-  thus "Dynkin_system \<Omega> M" sorry 
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> disj_countable_union_closed M"
+    using sd_omega_imp_c_closed sd_omega_imp_ndu_closed by auto
+  thus "Dynkin_system \<Omega> M"
+    using Dynkin_omega_c_disju_closed by auto 
 qed 
 
 end
