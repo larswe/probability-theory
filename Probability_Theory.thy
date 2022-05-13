@@ -915,7 +915,7 @@ proof -
         using M_pow c_closed dcu_closed empty_in dcu_c_empty_imp_sd_closed by auto
       hence "range ?B \<subseteq> M"
         using UNIV_I diff_le_self image_subset_iff non_decreasing_multistep sequence set_diff_closed_def
-        by (smt (verit, best)) (* TODO - Make this whole proof a lot more succinct.*) 
+        by (smt (verit, best))
       ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
         using dcu_closed unfolding disj_countable_union_closed_def by blast
       moreover have "(\<Union>i::nat. A i) = (\<Union>i::nat. ?B i)"  
@@ -967,7 +967,87 @@ lemma sd_omega_imp_ndu_closed:
       and ndu_closed: "non_decreasing_union_closed M"
       and omega: "\<Omega> \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>" 
-    shows "disj_countable_union_closed M" sorry 
+    shows "disj_countable_union_closed M" 
+proof - 
+  have "M \<noteq> {}"
+    using omega by auto  
+
+  moreover have "\<forall>A. range A \<subseteq> M \<and> disjoint_family A \<longrightarrow> (\<Union>i::nat. A i) \<in> M"
+  proof 
+    fix A :: "nat \<Rightarrow> 'a set"
+    show "range A \<subseteq> M \<and> disjoint_family A \<longrightarrow> \<Union> (range A) \<in> M"
+    proof
+      let ?B = "(\<lambda>n. (\<Union>i\<in>{i::nat. i \<le> n}. A i))"
+
+      have "non_decreasing ?B" 
+        unfolding non_decreasing_def by (simp add: UN_subset_iff UN_upper) 
+      moreover assume A_assm: "range A \<subseteq> M \<and> disjoint_family A"
+      have "\<forall>n. ?B n \<in> M" 
+      proof 
+        fix n 
+        show "?B n \<in> M" 
+          using A_assm 
+        proof (induction n)
+          case 0
+          have "\<Union> (A ` {i::nat. i \<le> 0}) = A 0"
+            by auto
+          then show "\<Union> (A ` {i::nat. i \<le> 0}) \<in> M"
+            using A_assm by blast
+        next
+          case (Suc n)
+          have "{i::nat. i \<le> (Suc n)} = insert (Suc n) {i::nat. i \<le> n}" 
+            unfolding insert_def by auto 
+          hence "?B (Suc n) = A (Suc n) \<union> ?B n"
+            by simp
+          moreover have "A (Suc n) \<in> M"
+            using A_assm by blast
+          hence "A (Suc n) \<subseteq> \<Omega>"
+            using M_pow by blast
+          moreover have B_in_M: "?B n \<in> M"
+            by (simp add: Suc.IH Suc.prems) 
+          hence B_in_Omega: "?B n \<subseteq> \<Omega>"
+            using M_pow by blast
+          ultimately have "?B (Suc n) = \<Omega> - ((\<Omega> - A (Suc n)) \<inter> (\<Omega> - ?B n))"
+            by (metis Diff_Diff_Int Diff_Int Int_absorb1)
+          hence "?B (Suc n) = \<Omega> - ((\<Omega> - A (Suc n)) - ?B n)"
+            by blast
+          moreover have "(\<Omega> - A (Suc n)) \<in> M"
+            by (meson A_assm M_pow complement_closed_def omega range_subsetD sd_closed sd_omega_imp_c_closed)
+          moreover have "?B n \<subseteq> (\<Omega> - A (Suc n))" 
+          proof 
+            fix x
+            assume x_in: "x \<in> ?B n"
+            hence x_in_smaller: "\<exists>m<(Suc n). x \<in> A m"
+              using x_in neq0_conv by fastforce 
+            hence "x \<in> \<Omega>"
+              using B_in_Omega x_in by blast
+            moreover have "x \<notin> A (Suc n)"
+              using x_in_smaller A_assm unfolding disjoint_family_on_def
+              by (metis UNIV_I disjoint_iff less_irrefl_nat) 
+            ultimately show "x \<in> (\<Omega> - A (Suc n))"
+              by simp 
+          qed
+          moreover have "((\<Omega> - A (Suc n)) - ?B n) \<in> M"
+            using B_in_M calculation sd_closed unfolding set_diff_closed_def by blast 
+          ultimately show "range A \<subseteq> M \<and> disjoint_family A \<Longrightarrow> \<Union> (A ` {i. i \<le> Suc n}) \<in> M"
+            using omega M_pow sd_closed unfolding set_diff_closed_def
+            by (metis Sup_le_iff Union_Pow_eq Union_mono) 
+        qed
+      qed  
+      hence "range ?B \<subseteq> M" 
+        by auto 
+      ultimately have "\<Union> (range ?B) \<in> M"
+        using ndu_closed unfolding non_decreasing_union_closed_def by blast
+      moreover have "\<Union> (range ?B) = \<Union> (range A)"
+        by fastforce 
+      ultimately show "(\<Union>i::nat. A i) \<in> M"
+        by auto 
+    qed 
+  qed 
+
+  ultimately show ?thesis 
+    using disj_countable_union_closed_def by metis 
+qed 
 
 lemma Dynkin_omega_diff_ndu_closed:
   shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M)"
