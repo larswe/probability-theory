@@ -1386,7 +1386,7 @@ proof -
 
   moreover have "countable_union_closed (\<Inter>M\<in>X. M)" 
     unfolding countable_union_closed_def 
-  proof (rule)
+  proof 
     show "(\<Inter>M\<in>X. M) \<noteq> {}"
       using calculation(2) by auto
   next 
@@ -1402,6 +1402,58 @@ proof -
 
   ultimately show ?thesis
     by (simp add: sigma_algebra_omega_c_cu_closed)
+qed
+
+lemma sa_ndu_is_a:
+  assumes sas: "\<forall>n::nat. sigma_algebra \<Omega> (X n)"
+      and non_dec: "non_decreasing X"
+    shows "algebra \<Omega> (\<Union>(range X))"
+proof -
+  have a_properties: "\<forall>n. X n \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> X n \<and> complement_closed \<Omega> (X n) \<and> countable_union_closed (X n)"
+    by (meson sas sigma_algebra_omega_c_cu_closed)
+
+  hence "(\<Union>(range X)) \<subseteq> Pow \<Omega>" 
+    by fast 
+
+  moreover have "\<Omega> \<in> (\<Union>(range X))"
+    using a_properties by auto 
+
+  moreover have "complement_closed \<Omega> (\<Union>(range X))"
+    using a_properties unfolding complement_closed_def by blast 
+
+  moreover have "finite_union_closed (\<Union>(range X))"
+    unfolding finite_union_closed_def 
+  proof 
+    show "\<Union> (range X) \<noteq> {}"
+      using calculation(2) by auto
+  next 
+    have fu_closed: "\<forall>n. finite_union_closed (X n)"
+      by (simp add: a_properties cu_imp_fu_closed)
+    show "\<forall>S\<in>\<Union> (range X). \<forall>T\<in>\<Union> (range X). S \<union> T \<in> \<Union> (range X)"
+    proof (rule ; rule)
+      fix S T
+      assume "S \<in> \<Union> (range X)" and "T \<in> \<Union> (range X)"
+      then obtain n m where S_n: "S \<in> X n" and T_m: "T \<in> X m"
+        by blast
+      thus "S \<union> T \<in> \<Union> (range X)"
+      proof (cases "m \<ge> n")
+        case True
+        hence "S \<in> X m"
+          by (metis S_n non_dec non_decreasing_stay_in)
+        thus "S \<union> T \<in> \<Union> (range X)"
+          using fu_closed T_m unfolding finite_union_closed_def by auto 
+      next
+        case False
+        hence "T \<in> X n"
+          by (meson T_m nle_le non_dec non_decreasing_stay_in)  
+        thus "S \<union> T \<in> \<Union> (range X)"
+          using fu_closed S_n unfolding finite_union_closed_def by auto 
+      qed 
+    qed
+  qed
+
+  ultimately show ?thesis
+    by (simp add: algebra_omega_c_fu_closed) 
 qed
 
 end
