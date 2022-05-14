@@ -4,6 +4,34 @@ begin
 
 chapter "Basics from Measure Theory"
 
+section "Auxiliary lemmas"
+
+text "Every non-empty set of natural numbers has a least element."
+lemma min_nat_elem: 
+  assumes non_empty: "\<exists>n::nat. n \<in> S" 
+  shows "\<exists>n. n \<in> S \<and> (\<forall>m\<in>S. m \<ge> n)" 
+proof -
+  obtain P where P_fun: "P = (\<lambda>n. n \<in> S)"
+    by simp
+  have "(\<exists>n. P n) = (\<exists>n. P n \<and> (\<forall>m<n. \<not> P m))"
+    using exists_least_iff by auto
+  thus ?thesis using P_fun non_empty
+    using leI by auto
+qed 
+
+lemma inter_is_Least_if_P:
+  assumes P_inter: "P (\<Inter>S\<in>{S. P S}. S)"
+  shows "(\<Inter>S\<in>{S. P S}. S) = Least P"
+proof -  
+  let ?U = "(\<Inter>S\<in>{S. P S}. S)"
+  have "\<forall>S. P S \<longrightarrow> ?U \<subseteq> S"
+    by auto 
+  moreover have "P ?U"
+    using P_inter by auto
+  ultimately show ?thesis
+    unfolding Least_def by (simp add: subset_antisym the_equality)
+qed
+
 section "Sets"
 
 subsection "Set operations"
@@ -206,7 +234,7 @@ of a nonincreasing sequence of sets, the sequence of its complements is non-decr
 The limit of that sequence is in the collection. Hence, so is its complement. And that's the limit
 of the initial sequence, as suggested by the antisymmetry above. 
 
-Sigma algebras are like that. So sigma algebras are monotone classes. Neat.]"
+Sigma algebras are like that. So sigma algebras are monotone classes. Neat. (/edit: Proved)]"
 
 proposition non_increasing_set_limit: 
   assumes non_increasing: "non_increasing A"
@@ -261,21 +289,6 @@ qed
 
 section "Collections of Sets"
 
-subsection "Auxiliary lemmas"
-
-text "Every non-empty set of natural numbers has a least element."
-lemma min_nat_elem: 
-  assumes non_empty: "\<exists>n::nat. n \<in> S" 
-  shows "\<exists>n. n \<in> S \<and> (\<forall>m\<in>S. m \<ge> n)" 
-proof -
-  obtain P where P_fun: "P = (\<lambda>n. n \<in> S)"
-    by simp
-  have "(\<exists>n. P n) = (\<exists>n. P n \<and> (\<forall>m<n. \<not> P m))"
-    using exists_least_iff by auto
-  thus ?thesis using P_fun non_empty
-    using leI by auto
-qed 
-
 subsection "Rules for Collections of Sets"
 
 text "Set collections are commonly selected according to whether they are closed under certain 
@@ -298,12 +311,13 @@ Note: If the subsets we want to be able to remove weren't required to be in the 
 (v) Countable unions.
 (vi) Countable union of a family of sets as long as it is disjoint. 
 
-Note: This does not hold for finite, disjoint unions unless {} is in the set. That is because
-      there may be no infinite disjoint sequences of sets in the collection. 
+Note: This does not hold for finite, disjoint unions unless {} is in the set. Only then is it possible
+      to represent any finite disjoint union as a countable disjoint union, where all but the first
+      finitely many entries of the sequence that yields the union can be {}. 
 
 (vii) Countable intersections.
 
-Note: Yes, (i), (v) and (i), (vii) are also equivalent, also deMorgan.
+Note: Yes, (i), (v) and (i), (vii) are also equivalent by deMorgan.
 
 Note: If a set is closed under countable un./in., it is of course so under finite ones as well.
 
@@ -699,7 +713,7 @@ definition disj_countable_union_closed :: "'a set set \<Rightarrow> bool"
 definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
   where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
 
-(* TODO - Could show by induction that this suffices for finite unions of size n *)
+(* TODO - Could show by induction that this suffices for unions of disjoint families of size n *)
   
 lemma dcu_imp_dfu_closed:
   assumes dcu_closed: "disj_countable_union_closed M"
@@ -1129,8 +1143,7 @@ subsubsection "Exemplary Set Collections"
 text "For now, these are just some famous types of set collections that people choose when they want
 to prove something and need a convenient set to do it. We'll soon see what they're useful for.
 
-Approaching these set collections by studying their properties separately first seems really useful, 
-as we get an abstract idea of of what the concepts represent and how they are related."
+The following proofs will be pretty easy. The heavy lifting was done in the previous subsection."
 
 lemma algebra_omega_c_fu_closed: 
   shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M)"
@@ -1231,7 +1244,7 @@ qed
 
 subsubsection "Relations between Set Collections"
 
-lemma algebra_is_pi_system:
+lemma algebra_is_pi:
   assumes a: "algebra \<Omega> M"
   shows "pi_system \<Omega> M"
 proof - 
@@ -1243,7 +1256,7 @@ proof -
     by (simp add: pi_system.intro pi_system_axioms.intro) 
 qed
 
-lemma sigma_algebra_is_algebra: 
+lemma sigma_is_algebra: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "algebra \<Omega> M"
 proof - 
@@ -1255,7 +1268,7 @@ proof -
     by (simp add: algebra_omega_c_fu_closed) 
 qed
 
-lemma sigma_algebra_is_monotone_class: 
+lemma sigma_is_mono: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "monotone_class \<Omega> M"
 proof - 
@@ -1273,13 +1286,13 @@ proof -
     unfolding monotone_class_def monotone_class_axioms_def subset_class_def by auto 
 qed
 
-lemma algebra_is_sigma_algebra_iff_monotone: 
+lemma algebra_is_sigma_iff_mono: 
   assumes a: "algebra \<Omega> M"
   shows "sigma_algebra \<Omega> M = monotone_class \<Omega> M"
 proof 
   assume "sigma_algebra \<Omega> M"
   thus "monotone_class \<Omega> M"
-    by (simp add: sigma_algebra_is_monotone_class) 
+    by (simp add: sigma_is_mono) 
 next
   assume "monotone_class \<Omega> M"
   hence "{} \<in> M \<and> finite_union_closed M \<and> non_decreasing_union_closed M"
@@ -1290,7 +1303,7 @@ next
     by (meson algebra_omega_c_fi_closed a sigma_algebra_omega_c_cu_closed) 
 qed
 
-lemma sigma_algebra_is_Dynkin:
+lemma sigma_is_Dynkin:
   assumes sa: "sigma_algebra \<Omega> M"
   shows "Dynkin_system \<Omega> M"
 proof - 
@@ -1311,13 +1324,13 @@ proof -
     by (simp add: sa sigma_algebra_imp_Dynkin_system)
 qed 
 
-lemma Dynkin_is_sigma_algebra_iff_pi: 
+lemma Dynkin_is_sigma_iff_pi: 
   assumes dynk: "Dynkin_system \<Omega> M"
   shows "sigma_algebra \<Omega> M = pi_system \<Omega> M"
 proof 
   assume "sigma_algebra \<Omega> M"
   thus "pi_system \<Omega> M"
-    by (simp add: algebra_is_pi_system sigma_algebra_is_algebra)
+    by (simp add: algebra_is_pi sigma_is_algebra)
 next 
   assume "pi_system \<Omega> M"
   hence "finite_inter_closed M \<and> complement_closed \<Omega> M \<and> (\<forall>S\<in>M. S \<subseteq> \<Omega>) \<and> non_decreasing_union_closed M"
@@ -1335,7 +1348,7 @@ next
     using sigma_algebra_omega_c_cu_closed by auto
 qed
 
-lemma Dynkin_is_monotone:
+lemma Dynkin_is_mono:
   assumes dynk: "Dynkin_system \<Omega> M"
   shows "monotone_class \<Omega> M"
 proof - 
@@ -1347,7 +1360,7 @@ proof -
     by (simp add: monotone_class.intro monotone_class_axioms.intro subset_class.intro) 
 qed
 
-lemma sa_pow_is_sa:
+lemma sigma_Pow_is_sigma:
   assumes sa: "sigma_algebra \<Omega> M"
       and subseq: "S \<in> M"
     shows "sigma_algebra S (Pow S)"
@@ -1360,7 +1373,7 @@ proof -
     by (simp add: sigma_algebra_omega_c_cu_closed) 
 qed 
 
-lemma sa_inter_is_sa:
+lemma sigma_inter_is_sigma:
   assumes sas: "\<forall>M\<in>X. sigma_algebra \<Omega> M"
       and non_empty: "X \<noteq> {}"
     shows "sigma_algebra \<Omega> (\<Inter>M\<in>X. M)"
@@ -1404,7 +1417,7 @@ proof -
     by (simp add: sigma_algebra_omega_c_cu_closed)
 qed
 
-lemma sa_ndu_is_a:
+lemma sigma_ndu_is_algebra:
   assumes sas: "\<forall>n::nat. sigma_algebra \<Omega> (X n)"
       and non_dec: "non_decreasing X"
     shows "algebra \<Omega> (\<Union>(range X))"
@@ -1439,7 +1452,7 @@ proof -
       proof (cases "m \<ge> n")
         case True
         hence "S \<in> X m"
-          by (metis S_n non_dec non_decreasing_stay_in)
+          by (meson S_n non_dec non_decreasing_stay_in)
         thus "S \<union> T \<in> \<Union> (range X)"
           using fu_closed T_m unfolding finite_union_closed_def by auto 
       next
@@ -1455,5 +1468,25 @@ proof -
   ultimately show ?thesis
     by (simp add: algebra_omega_c_fu_closed) 
 qed
+
+section "Generators"
+
+text "'sigma_sets \<Omega> M' describes the smallest sigma algebra containing all sets in M.
+      The LEAST operator ensures uniqueness."
+lemma sigma_sets_Least: 
+  assumes M_Pow: "M \<subseteq> Pow \<Omega>"
+  shows "sigma_sets \<Omega> M = (LEAST N. M \<subseteq> N \<and> sigma_algebra \<Omega> N)"
+proof - 
+  have "{N. M \<subseteq> N \<and> sigma_algebra \<Omega> N} \<noteq> {}"
+    using sigma_algebra_Pow M_Pow by auto 
+  hence "sigma_algebra \<Omega> (\<Inter>N\<in>{N. M \<subseteq> N \<and> sigma_algebra \<Omega> N}. N)"
+    by (metis (mono_tags, lifting) mem_Collect_eq sigma_inter_is_sigma)
+  hence "(LEAST N. M \<subseteq> N \<and> sigma_algebra \<Omega> N) = (\<Inter>N\<in>{N. M \<subseteq> N \<and> sigma_algebra \<Omega> N}. N)"
+    using inter_is_Least_if_P
+    by (metis (mono_tags, lifting) Inf_greatest image_ident mem_Collect_eq) 
+  thus ?thesis 
+    using sigma_sets_least_sigma_algebra M_Pow image_ident by metis 
+qed
+
 
 end
