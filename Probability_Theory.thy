@@ -906,16 +906,13 @@ proof -
     using disj_countable_union_closed_def by metis 
 qed
 
-lemma ndu_c_fu_Omega_imp_cu_closed:
+lemma ndu_fu_imp_cu_closed:
   assumes ndu_closed: "non_decreasing_union_closed M"
-      and fu_closed: "finite_union_closed M" (* TODO - Needed ? *)
-      and c_closed: "complement_closed \<Omega> M"
-      and Omega: "\<Omega> \<in> M" 
-      and M_pow: "M \<subseteq> Pow \<Omega>"
+      and fu_closed: "finite_union_closed M"
     shows "countable_union_closed M"
 proof - 
   have M_non_empty: "M \<noteq> {}"
-    using Omega by auto 
+    using fu_closed unfolding finite_union_closed_def by auto 
 
   moreover have "\<forall>A::(nat \<Rightarrow> 'a set). range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M"
   proof (rule ; rule)
@@ -936,11 +933,32 @@ proof -
           using A_within_M by auto
       next
         case (Suc n)
-        have sd_closed: "set_diff_closed M"
-          using c_fu_omega_imp_sd_closed fu_closed Omega M_pow c_closed by auto 
-        (* TODO - This needs fixing. *)
-        have "\<Union> (A ` {0..Suc n}) = \<Omega> - ((\<Omega> - A (Suc n)) - \<Union> (A ` {0..n}))" sorry
-        then show "\<Union> (A ` {0..Suc n}) \<in> M" sorry
+   
+        have "\<Union> (A ` {0..Suc n}) = \<Union> (A ` {0..n}) \<union> A (Suc n)" 
+        proof (rule ; rule)
+          fix x 
+          assume "x \<in> \<Union> (A ` {0..Suc n})"
+          hence "\<exists>m\<in>{0..Suc n}. x \<in> A m"
+            by blast
+          hence "(\<exists>m\<in>{0..n}. x \<in> A m) \<or> x \<in> A (Suc n)"
+            by (metis atLeastAtMost_iff le_SucE) 
+          thus "x \<in> \<Union> (A ` {0..n}) \<union> A (Suc n)"
+            by blast
+        next 
+          fix x 
+          assume "x \<in> \<Union> (A ` {0..n}) \<union> A (Suc n)"
+          hence "(\<exists>m\<in>{0..n}. x \<in> A m) \<or> x \<in> A (Suc n)"
+            by blast
+          thus "x \<in> \<Union> (A ` {0..Suc n})"
+            by auto
+        qed
+
+        moreover have "\<Union> (A ` {0..n}) \<in> M"
+          using Suc by auto
+        moreover have "A (Suc n) \<in> M"
+          using A_within_M by auto    
+        ultimately show "\<Union> (A ` {0..Suc n}) \<in> M"  
+          using fu_closed unfolding finite_union_closed_def by auto  
       qed
     qed 
     hence "range ?B \<subseteq> M" 
@@ -948,10 +966,8 @@ proof -
    
     ultimately have "\<Union> (range ?B) \<in> M"
       using M_non_empty ndu_closed unfolding non_decreasing_union_closed_def by auto 
-
     moreover have "\<Union> (range ?B) = \<Union> (range A)" 
       by fastforce 
-
     ultimately show "\<Union> (range A) \<in> M" 
       by auto 
   qed
@@ -1264,11 +1280,61 @@ proof
     by (simp add: sigma_algebra_is_monotone_class) 
 next
   assume "monotone_class \<Omega> M"
-  hence "\<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> non_decreasing_union_closed M"
-    using algebra_omega_c_fi_closed a monotone_class.ndu_closed by blast
-  hence "countable_union_closed M" sorry 
+  hence "{} \<in> M \<and> finite_union_closed M \<and> non_decreasing_union_closed M"
+    by (metis algebra_iff_Int algebra_omega_c_fu_closed a monotone_class.ndu_closed)
+  hence "countable_union_closed M"
+    by (simp add: ndu_fu_imp_cu_closed)  
   thus "sigma_algebra \<Omega> M"
     by (meson algebra_omega_c_fi_closed a sigma_algebra_omega_c_cu_closed) 
 qed
+
+lemma sigma_algebra_is_Dynkin:
+  assumes sa: "sigma_algebra \<Omega> M"
+  shows "Dynkin_system \<Omega> M"
+proof - 
+
+  have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M"
+    by (metis sa sigma_algebra_omega_c_cu_closed)
+
+  moreover have "finite_union_closed M"
+    using cu_imp_fu_closed sa sigma_algebra_omega_c_cu_closed by auto
+
+  moreover have "complement_closed \<Omega> M"
+    using sa sigma_algebra_omega_c_cu_closed by auto  
+  hence "set_diff_closed M"
+    using c_fu_omega_imp_sd_closed calculation
+    by auto 
+
+  ultimately show ?thesis
+    by (simp add: sa sigma_algebra_imp_Dynkin_system)
+qed 
+
+lemma Dynkin_is_sigma_algebra_iff_pi: 
+  assumes dynk: "Dynkin_system \<Omega> M"
+  shows "sigma_algebra \<Omega> M = pi_system \<Omega> M"
+proof 
+  assume "sigma_algebra \<Omega> M"
+  thus "pi_system \<Omega> M"
+    by (simp add: algebra_is_pi_system sigma_algebra_is_algebra)
+next 
+  assume "pi_system \<Omega> M"
+  hence "finite_inter_closed M \<and> complement_closed \<Omega> M \<and> (\<forall>S\<in>M. S \<subseteq> \<Omega>) \<and> non_decreasing_union_closed M"
+    using dynk Dynkin_omega_diff_ndu_closed Dynkin_omega_c_disju_closed 
+    unfolding pi_system_def pi_system_axioms_def by blast 
+  hence "finite_union_closed M \<and> non_decreasing_union_closed M"
+    using c_fi_imp_fu_closed by auto 
+  hence "countable_union_closed M"
+    by (simp add: ndu_fu_imp_cu_closed) 
+
+  moreover have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M"
+    by (metis Dynkin_omega_c_disju_closed dynk)
+ 
+  ultimately show "sigma_algebra \<Omega> M"
+    using sigma_algebra_omega_c_cu_closed by auto
+qed
+ 
+
+(* TODO: Remove empty_in from assumptions. Replace with something tighter, e.g., there is a disjoint
+sequence in M. *)
    
 end
