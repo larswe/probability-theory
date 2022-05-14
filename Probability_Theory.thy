@@ -252,7 +252,7 @@ proof -
     qed
     thus ?thesis
       using liminf_limsup_eq_cond by auto 
-  qed
+  qed 
 
   ultimately show ?thesis
     by (simp add: set_limit_eq_limsup) 
@@ -700,9 +700,7 @@ definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
   where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
 
 (* TODO - Could show by induction that this suffices for finite unions of size n *)
-
-(* TODO - The below is too strong, it suffices if there is an infinite sequence
-          of sets within M. {} \<in> M is just particularly convenient.*)
+  
 lemma dcu_imp_dfu_closed:
   assumes dcu_closed: "disj_countable_union_closed M"
       and empty_in: "{} \<in> M"
@@ -849,10 +847,8 @@ proof -
         using A_disj_in_M
       proof (induction n)
         case 0
-        have "\<Union> (A ` {i::nat. i \<le> 0}) = A 0"
-          by auto
-        then show "\<Union> (A ` {i::nat. i \<le> 0}) \<in> M"
-          using A_disj_in_M by blast
+        thus "\<Union> (A ` {i::nat. i \<le> 0}) \<in> M"
+          using A_disj_in_M by auto 
       next
         case (Suc n)
         have "{i::nat. i \<le> (Suc n)} = insert (Suc n) {i::nat. i \<le> n}" 
@@ -885,9 +881,8 @@ proof -
         qed
         moreover have "((\<Omega> - A (Suc n)) - ?B n) \<in> M"
           using calculation sd_closed Suc.IH Suc.prems unfolding set_diff_closed_def by blast 
-        ultimately show "range A \<subseteq> M \<and> disjoint_family A \<Longrightarrow> \<Union> (A ` {i. i \<le> Suc n}) \<in> M"
-          using omega M_pow sd_closed unfolding set_diff_closed_def
-          by (metis Sup_le_iff Union_Pow_eq Union_mono) 
+        ultimately show "\<Union> (A ` {i. i \<le> Suc n}) \<in> M"
+          using omega sd_closed unfolding set_diff_closed_def by auto 
       qed
     qed  
     hence "range ?B \<subseteq> M" 
@@ -1251,7 +1246,14 @@ qed
 lemma sigma_algebra_is_algebra: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "algebra \<Omega> M"
-  using sa sigma_algebra_def by auto 
+proof - 
+  have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
+    by (meson sa sigma_algebra_omega_c_cu_closed)
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
+    by (simp add: cu_imp_fu_closed)
+  thus ?thesis
+    by (simp add: algebra_omega_c_fu_closed) 
+qed
 
 lemma sigma_algebra_is_monotone_class: 
   assumes sa: "sigma_algebra \<Omega> M"
@@ -1332,9 +1334,74 @@ next
   ultimately show "sigma_algebra \<Omega> M"
     using sigma_algebra_omega_c_cu_closed by auto
 qed
- 
 
-(* TODO: Remove empty_in from assumptions. Replace with something tighter, e.g., there is a disjoint
-sequence in M. *)
-   
+lemma Dynkin_is_monotone:
+  assumes dynk: "Dynkin_system \<Omega> M"
+  shows "monotone_class \<Omega> M"
+proof - 
+  have "M \<subseteq> Pow \<Omega> \<and> complement_closed \<Omega> M \<and> non_decreasing_union_closed M"
+    by (meson Dynkin_omega_c_disju_closed Dynkin_omega_diff_ndu_closed dynk)
+  hence "M \<subseteq> Pow \<Omega> \<and> non_decreasing_union_closed M \<and> non_increasing_inter_closed M"
+    using ndu_c_imp_nii_closed by auto
+  thus ?thesis
+    by (simp add: monotone_class.intro monotone_class_axioms.intro subset_class.intro) 
+qed
+
+lemma sa_pow_is_sa:
+  assumes sa: "sigma_algebra \<Omega> M"
+      and subseq: "S \<in> M"
+    shows "sigma_algebra S (Pow S)"
+proof - 
+  have "complement_closed S (Pow S)" 
+    unfolding complement_closed_def by (simp add: Pow_not_empty complement_closed_def)
+  moreover have "countable_union_closed (Pow S)" 
+    unfolding countable_union_closed_def by blast 
+  ultimately show ?thesis
+    by (simp add: sigma_algebra_omega_c_cu_closed) 
+qed 
+
+lemma sa_inter_is_sa:
+  assumes sas: "\<forall>M\<in>X. sigma_algebra \<Omega> M"
+      and non_empty: "X \<noteq> {}"
+    shows "sigma_algebra \<Omega> (\<Inter>M\<in>X. M)"
+proof - 
+  have sa_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
+    by (meson sas sigma_algebra_omega_c_cu_closed)
+
+  have "(\<Inter>M\<in>X. M) \<subseteq> Pow \<Omega>" 
+  proof 
+    fix x
+    assume "x \<in> (\<Inter>M\<in>X. M)"
+    then obtain M where "M \<in> X \<and> x \<in> M" 
+      using non_empty by auto 
+    thus "x \<in> Pow \<Omega>"
+      using sa_properties by auto 
+  qed 
+
+  moreover have "\<Omega> \<in> (\<Inter>M\<in>X. M)"  
+    using sa_properties non_empty by simp 
+ 
+  moreover have "complement_closed \<Omega> (\<Inter>M\<in>X. M)" 
+    using sa_properties unfolding complement_closed_def by blast
+
+  moreover have "countable_union_closed (\<Inter>M\<in>X. M)" 
+    unfolding countable_union_closed_def 
+  proof (rule)
+    show "(\<Inter>M\<in>X. M) \<noteq> {}"
+      using calculation(2) by auto
+  next 
+    show "\<forall>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> (\<Inter>M\<in>X. M) \<longrightarrow> \<Union> (range A) \<in> (\<Inter>M\<in>X. M)"
+    proof (rule ; rule)
+      fix A :: "nat \<Rightarrow> 'a set"
+      assume "range A \<subseteq> (\<Inter>M\<in>X. M)"
+      hence "\<forall>M\<in>X. range A \<subseteq> M" by auto 
+      thus "\<Union> (range A) \<in> (\<Inter>M\<in>X. M)" 
+        using sa_properties unfolding countable_union_closed_def by simp
+    qed
+  qed
+
+  ultimately show ?thesis
+    by (simp add: sigma_algebra_omega_c_cu_closed)
+qed
+
 end
