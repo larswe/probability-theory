@@ -6,7 +6,7 @@ chapter "Basics from Measure Theory"
 
 section "Auxiliary lemmas"
 
-text "Every non-empty set of natural numbers has a least element."
+(* Every non-empty set of natural numbers has a least element. *)
 lemma min_nat_elem: 
   assumes non_empty: "\<exists>n::nat. n \<in> S" 
   shows "\<exists>n. n \<in> S \<and> (\<forall>m\<in>S. m \<ge> n)" 
@@ -19,6 +19,8 @@ proof -
     using leI by auto
 qed 
 
+(* If the intersection of the family of sets fulfilling a property fulfils that property, it is the
+   smallest set that does so. *)
 lemma inter_is_Least_if_P:
   assumes P_inter: "P (\<Inter>S\<in>{S. P S}. S)"
   shows "(\<Inter>S\<in>{S. P S}. S) = Least P"
@@ -36,11 +38,73 @@ section "Sets"
 
 subsection "Set operations"
 
-text "Some sequences of sets behave monotonically with respect to the partial order of subsets."
+subsubsection "Elementary operations"
 
+text "Just as real (or complex) numbers can be added or multiplied, there exist operations on sets."
+
+text "Union:"
+corollary "A \<union> B = {x. x \<in> A \<or> x \<in> B}" 
+  using Un_def by auto
+
+text "Intersection:"
+corollary "A \<inter> B = {x. x \<in> A \<and> x \<in> B}" 
+  using Int_def by auto 
+
+text "Complement:"
+corollary "-A = {x. x \<notin> A}" 
+  using Compl_eq by auto 
+
+text "Difference:"
+corollary "A - B = A \<inter> (-B)" 
+  using Diff_eq by auto 
+
+text "Symmetric difference:"
+definition symm_diff :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a set"
+  where "symm_diff A B = (A - B) \<union> (B - A)"
+
+notation symm_diff (infix "\<Delta>" 50)
+
+lemma symm_diff_xor: "A \<Delta> B = {x. (x\<in>A \<or> x\<in>B) \<and> \<not>(x\<in>A \<and> x\<in>B)}"
+    by (simp add: Un_def symm_diff_def ; auto)
+
+text "We also use standard notation for unions and intersections of finitely / countably many sets."
+
+corollary 
+  fixes A :: "nat \<Rightarrow> 'a set"
+  shows "(\<Union>i\<in>{0..n}. A i) = {x. \<exists>i\<in>{0..n}. x \<in> A i}" 
+  using UNION_eq by auto
+
+corollary 
+  fixes A :: "nat \<Rightarrow> 'a set"
+  shows "(\<Inter>i. A i) = {x. \<forall>i\<in>{0..}. x \<in> A i}" 
+  by blast 
+
+
+subsubsection "Additional terminology"
+
+text "Some additional terminology:"
+
+text "The empty set:"
+corollary "\<not>(\<exists>x. x \<in> {})"
+  by simp
+
+text "Subsets:"
+corollary "A \<subseteq> B \<longleftrightarrow> (\<forall>x. x \<in> A \<longrightarrow> x \<in> B)"
+  by (simp add: subset_iff)
+
+text "Disjoint:"
+corollary "A \<inter> B = {} \<longleftrightarrow> \<not>(\<exists>x. x \<in> A \<and> x \<in> B)"
+  by (simp add: disjoint_iff) 
+
+text "Power set:"
+corollary "Pow \<Omega> = {A. A \<subseteq> \<Omega>}"
+  by (simp add: Pow_def)
+
+text "{A n, n \<ge> 0} is non-decreasing:"
 definition non_decreasing :: "(nat \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "non_decreasing A \<equiv> \<forall>n. A n \<subseteq> A (n + 1)"
 
+(* In a non-decreasing set sequence, any set is a subset of all the ones that follow. *)
 lemma non_decreasing_multistep: 
   assumes non_dec: "non_decreasing A"
       and leq: "n \<le> m"
@@ -54,16 +118,18 @@ proof -
     by (metis bot_nat_0.extremum le_iff_add leq)
 qed 
 
+(* Hence, once an element arises within a sequence, it will stay there for all of eternity. *)
 lemma non_decreasing_stay_in: 
   assumes non_dec: "non_decreasing A"
       and base: "x \<in> A n"
     shows "\<forall>m\<ge>n. x \<in> A m"
   using base non_dec non_decreasing_multistep by auto
 
-
+text "{A n, n \<ge> 0} is non-increasing:"
 definition non_increasing :: "(nat \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "non_increasing A \<equiv> \<forall>n. A (n + 1) \<subseteq> A n"
 
+(* In a non-decreasing set sequence, any set is a subset of all the ones that precede it. *)
 lemma non_increasing_multistep: 
   assumes non_inc: "non_increasing A"
       and leq: "n \<le> m"
@@ -77,46 +143,47 @@ proof -
     by (metis bot_nat_0.extremum le_iff_add leq)
 qed 
 
+(* Hence, once an element is absent from a set in the sequence, it will stay absent forever. *)
 lemma non_increasing_stay_out: 
   assumes non_inc: "non_increasing A"
       and base: "x \<notin> A n"
     shows "\<forall>m\<ge>n. x \<notin> A m"
   using base non_inc non_increasing_multistep by auto
 
+text "The de Morgan formulas are as follows:
+
+(i)  The elements that don't belong to any set in a family are exactly the ones that belong to every 
+     complement of sets in the family.
+
+(ii) The elements that don't belong to all sets in a family are exactly the ones that appear in some 
+     complement of a set in the family."
+corollary "-(\<Union>k\<in>I. A k) = (\<Inter>k\<in>I. -(A k))" by simp
+
+corollary "-(\<Inter>k\<in>I. A k) = (\<Union>k\<in>I. -(A k))" by simp
+
+
 
 subsection "Limits of Sets"
 
-text "Let's think about what the limit of a sequence of sets could be. 
-Whatever it is, it should at least contain those elements that eventually occur in every 
-single set of the sequence after some finite cutoff. 
+text "It is also possible to define limits of sets. However not every sequence of sets has a limit."
 
-We call this minimal notion of a limit liminf."
-
+(* Any sensible notion of a limit should at least include these elements... *) 
 definition liminf :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "liminf A = (\<Union>n. (\<Inter>m\<in>{m'. m' \<ge> n}. A m))"
 
+(* ... as they eventually occur at every single index of the sequence. *)
 lemma liminf_greater_n: "(x \<in> liminf A) = (\<exists>n.\<forall>m\<ge>n. x \<in> A m)"
   by (simp add: liminf_def) 
 
-text "Any sensible limit of a sequence of sets should include at least the elements of liminf.
-On the other hand, the limit should certainly not include any elements that do not occur in even a 
-single set after some finite cutoff.
-
-In other words, limsup contains all elements that, no matter how sparsely they may occur, never
-stop appearing as elements of sets in the sequence indefinitely. Elements that are not in this set
-should certainly not be a part of a any sensible limit of a sequence of sets."
-
+(* Any sensible notion of a limit should at most include these elements... *)
 definition limsup :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "limsup A = (\<Inter>n. (\<Union>m\<in>{m'. m' \<ge> n}. A m))"
 
-lemma limsup_greater_n: "(x \<in> limsup A) = (\<forall>n.\<exists>m\<ge>n. x \<in> A m)"
+(* ... as all others eventually stop appearing forever. *)
+lemma limsup_greater_n: "(x \<notin> limsup A) = (\<exists>n.\<forall>m\<ge>n. x \<notin> A m)"
   by (simp add: limsup_def) 
 
-text "Reassuringly, liminf, our favourite selection of elements that have to be in the limiting set,
-does not contain any elements that we have categorically excluded on pain of them not occuring in limsup.
-
-This is expected. Elements that eventually appear in every set do not disappear indefinitely."
-
+(* It's reassuring that the two requirements above never lead to a contradiction. *)
 lemma liminf_subseq_limsup: "liminf A \<subseteq> limsup A"
 proof 
   fix x 
@@ -126,50 +193,41 @@ proof
   hence "\<forall>n.\<exists>m\<ge>n. x \<in> A m"
     by (metis nat_le_linear)
   thus "x \<in> limsup A"
-    by (simp add: limsup_greater_n)
+    by (metis limsup_greater_n)
 qed 
 
-text "It's handy to notice that, if we wanted to know whether liminf and limsup are the same, say
-to define an unambiguous limit, we would only have to check whether liminf contains all elements 
-of limsup."
-
+(* We thus get a handy condition for checking whether liminf and limsup are the same. *)
 lemma liminf_limsup_eq_cond: 
-  assumes limsup_subseq_liminf: "limsup A \<subseteq> liminf A" 
-  shows "liminf A = limsup A"
-  by (simp add: limsup_subseq_liminf liminf_subseq_limsup subset_antisym)
+  shows "(liminf A = limsup A) \<longleftrightarrow> (limsup A \<subseteq> liminf A)"
+  by (simp add: liminf_subseq_limsup set_eq_subset)
 
-text "At the end of the day, it could reasonably be argued in favour of or against excluding 
-elements that are not in liminf, and elements that are not in limsup in our 'limit'. 
-Because we don't want to argue with anyone, we only define the limit in the case that it is uniquely
-determined by the two rules we have proposed."
-
+text "We say that a sequence of sets has a limit if the two above notions agree."
 definition set_limit :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
   where "set_limit A = (THE S. S = liminf A \<and> S = limsup A)"
 
-text "If the limit exists, it's then equal to both candidates. No surprise."
-
+(* If the limit exists, it's of course equal to liminf... *)
 lemma set_limit_eq_liminf: 
   assumes limsup_subseq_liminf: "limsup A \<subseteq> liminf A" 
   shows "set_limit A = liminf A"
 proof - 
   have "limsup A = liminf A"
-    by (simp add: liminf_limsup_eq_cond limsup_subseq_liminf)
+    using liminf_limsup_eq_cond limsup_subseq_liminf by fast
   thus ?thesis 
     by (simp add: set_limit_def) 
 qed
 
+(* ... and to limsup. *)
 lemma set_limit_eq_limsup: 
   assumes limsup_subseq_liminf: "limsup A \<subseteq> liminf A" 
   shows "set_limit A = limsup A"
   by (simp add: liminf_limsup_eq_cond limsup_subseq_liminf set_limit_eq_liminf)
 
-text "There are two more or less obvious cases of when a set limit exists. 
+text "One instance when a limit exists is when the sequence of sets is monotone."
 
-If all elements that appear in some set of the sequence also appear at all greater indices,
-any element that doesn't disappear from the sequence indefinitely will eventually start appearing 
-forever. Then the limit of the sequence is equal to the set of all elements that ever appear in
-a set of the sequence, as those are also the ones that appear forever."
+(* For a non-decreasing sequence of sets, any element that doesn't disappear forever will start
+   appearing forever. These are precisely all elements that appear in the sequence at any point. 
 
+   The limit is thus defined.*)
 proposition non_decreasing_set_limit: 
   assumes non_decreasing: "non_decreasing A"
   shows "set_limit A = \<Union>(range A)" 
@@ -181,7 +239,7 @@ proof -
       fix x 
       assume "x \<in> limsup A"
       hence "(\<exists>m. m \<ge> 1 \<and> x \<in> A m)"
-        by (simp add: limsup_greater_n) 
+        using limsup_greater_n by fast
       thus "x \<in> \<Union>(range A)"
         by auto 
     qed
@@ -206,36 +264,24 @@ proof -
       fix x 
       assume "x \<in> limsup A"
       hence "\<forall>n.\<exists>m\<ge>n. x \<in> A m"
-        by (simp add: limsup_greater_n)
+        by (metis limsup_greater_n)
       hence "\<exists>n.\<forall>m\<ge>n. x \<in> A m"
         by (meson non_decreasing non_decreasing_stay_in)
       thus "x \<in> liminf A"
         by (simp add: liminf_greater_n)
     qed
     thus ?thesis
-      using liminf_limsup_eq_cond by auto 
+      using liminf_limsup_eq_cond by fast 
   qed
 
   ultimately show ?thesis
     by (simp add: set_limit_eq_limsup) 
 qed
 
-text "Secondly, if any element that disappears from the sequence is gone for good, all elements 
-that do not stop appearing forever (limsup) necessarily have to occur at every single index,
-which means they're in liminf. Notably, this limit has the property that all elements in the limit
-appear at every single index of the sequence.
+(* For a non-increasing sequence of sets, any element that doesn't appear at every single index
+   will eventually disappear forever.
 
-[There's some antisymmetry here. The elements not in the limit in the non-decreasing case had a 
-similar property, but with respect to being outside the sequence at every index from 0 to infinity.
-
-I wonder if, if a set collection is closed under complements and non-decreasing unions, 
-they are also closed under non-increasing intersections. I think so, because given the intersection
-of a nonincreasing sequence of sets, the sequence of its complements is non-decreasing. 
-The limit of that sequence is in the collection. Hence, so is its complement. And that's the limit
-of the initial sequence, as suggested by the antisymmetry above. 
-
-Sigma algebras are like that. So sigma algebras are monotone classes. Neat. (/edit: Proved)]"
-
+   The limit is thus defined.*)
 proposition non_increasing_set_limit: 
   assumes non_increasing: "non_increasing A"
   shows "set_limit A = \<Inter>(range A)" 
@@ -247,7 +293,7 @@ proof -
       fix x 
       assume "x \<in> limsup A"
       hence "\<forall>n. \<exists>m. m \<ge> n \<and> x \<in> A m"
-        by (simp add: limsup_greater_n) 
+        by (meson limsup_greater_n)
       hence "\<forall>m. x \<in> A m"
         using non_increasing non_increasing_stay_out by metis 
       thus "x \<in> \<Inter>(range A)"
@@ -272,14 +318,14 @@ proof -
       fix x 
       assume "x \<in> limsup A"
       hence "\<forall>n. \<exists>m. m \<ge> n \<and> x \<in> A m"
-        by (simp add: limsup_greater_n)
+        by (meson limsup_greater_n)
       hence "\<exists>n. \<forall>k\<ge>n. x \<in> A k"
         by (meson non_increasing non_increasing_stay_out)
       thus "x \<in> liminf A"
         by (simp add: liminf_greater_n) 
     qed
     thus ?thesis
-      using liminf_limsup_eq_cond by auto 
+      using liminf_limsup_eq_cond by fast  
   qed 
 
   ultimately show ?thesis
@@ -1488,5 +1534,8 @@ proof -
     using sigma_sets_least_sigma_algebra M_Pow image_ident by metis 
 qed
 
+definition sigma_generator :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
+  where "sigma_generator N \<Omega> M = (M = sigma_sets \<Omega> N)"
+  
 
 end
