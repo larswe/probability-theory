@@ -10,7 +10,9 @@ Ideally, it could then be used by others to get a structured overview of concept
 
 In a perfect world, I want to formalise the results and definitions I'm interested in learning about myself, while using others (in particular those relating to analysis) from the Isabelle library.
 I shall try one of these two: 
+
 (i) Make a nice selection of imports that lets me assume exactly what I don't want to attempt myself. 
+
 (ii) Just import everything but creating duplicate definitions / results, cross-referencing with the Isabelle library every now and then.
 
 We'll see how it goes. 
