@@ -1253,6 +1253,16 @@ next
     by (simp add: sigma_algebra_omega_c_cu_closed)
 qed
 
+lemma empty_in_sigma: 
+  assumes sa: "sigma_algebra \<Omega> M"
+  shows "{} \<in> M"
+proof - 
+  have "\<Omega> - \<Omega> \<in> M"
+    using sigma_algebra_omega_c_ci_closed sa unfolding complement_closed_def by blast 
+  thus ?thesis 
+    by auto 
+qed 
+
 locale monotone_class = subset_class + 
   assumes ndu_closed: "non_decreasing_union_closed M"
       and ncdi_closed: "non_increasing_inter_closed M"
@@ -1513,6 +1523,65 @@ proof -
 
   ultimately show ?thesis
     by (simp add: algebra_omega_c_fu_closed) 
+qed
+
+text "If M is a \<sigma>-algebra, and R \<subseteq> \<Omega>, then 'R \<inter> M' = {R \<inter> S : S \<in> M} is a \<sigma>-algebra on R."
+
+lemma inter_coll_is_sigma:
+  assumes sa: "sigma_algebra \<Omega> M"
+      and subseq: "R \<subseteq> \<Omega>"
+    shows "sigma_algebra R {C. \<exists>A \<in> M. C = R \<inter> A}"
+proof - 
+  let ?N = "{C. \<exists>S \<in> M. C = R \<inter> S}"
+  have "?N \<subseteq> Pow R"
+    by auto 
+
+  moreover have "\<Omega> \<in> M"
+    using sigma_algebra_omega_c_ci_closed sa by auto 
+  hence "R \<in> ?N"
+    using subseq by auto 
+
+  moreover have "\<forall>S\<in>?N. R - S \<in> ?N" 
+  proof 
+    fix S
+    assume "S \<in> ?N"
+    then obtain T where T_choice: "T \<in> M \<and> S = R \<inter> T"
+      by blast
+    hence "R - S = R \<inter> (\<Omega> - T)"
+      using subseq by fast 
+    moreover have "\<Omega> - T \<in> M"
+      using sigma_algebra_omega_c_ci_closed T_choice sa unfolding complement_closed_def by fast 
+    ultimately show "R - S \<in> ?N" 
+      by auto 
+  qed
+  hence "complement_closed R ?N" 
+    using calculation(2) unfolding complement_closed_def by auto 
+
+  moreover have "\<forall>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> ?N \<longrightarrow> \<Union> (range A) \<in> ?N"
+  proof (rule ; rule)
+    fix A :: "nat \<Rightarrow> 'a set"
+    assume "range A \<subseteq> ?N"
+    hence "\<forall>n. \<exists>S \<in> M. A n = R \<inter> S"
+      by auto 
+    then obtain B where B_choice: "\<forall>n. ((A n = R \<inter> B n) \<and> (B n \<in> M))"
+      by metis 
+
+    hence "\<Union>(range A) = R \<inter> \<Union>(range B)" 
+      by blast 
+
+    moreover have "range B \<subseteq> M"
+      using B_choice by auto 
+    hence "\<Union>(range B) \<in> M" 
+      using sa sigma_algebra_omega_c_cu_closed unfolding countable_union_closed_def by blast 
+
+    ultimately show "\<Union> (range A) \<in> ?N"
+      by auto  
+  qed 
+  hence "countable_union_closed ?N" 
+    using calculation(2) unfolding countable_union_closed_def by auto
+
+  ultimately show "sigma_algebra R ?N"
+    using sigma_algebra_omega_c_cu_closed by (metis (no_types)) 
 qed
 
 section "Generators"
