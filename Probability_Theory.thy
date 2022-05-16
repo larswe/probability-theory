@@ -1527,7 +1527,7 @@ qed
 
 text "If M is a \<sigma>-algebra, and R \<subseteq> \<Omega>, then 'R \<inter> M' = {R \<inter> S : S \<in> M} is a \<sigma>-algebra on R."
 
-lemma inter_coll_is_sigma:
+lemma sigma_inter_coll_is_sigma:
   assumes sa: "sigma_algebra \<Omega> M"
       and subseq: "R \<subseteq> \<Omega>"
     shows "sigma_algebra R {C. \<exists>A \<in> M. C = R \<inter> A}"
@@ -1581,8 +1581,44 @@ proof -
     using calculation(2) unfolding countable_union_closed_def by auto
 
   ultimately show "sigma_algebra R ?N"
-    using sigma_algebra_omega_c_cu_closed by (metis (no_types)) 
+    by (simp add: sigma_algebra_omega_c_cu_closed)
 qed
+
+text "If \<Omega> and \<Omega>' are sets, M' a \<sigma>-algebra on \<Omega>' and T: \<Omega> \<rightarrow> \<Omega>' a mapping, then the collection of 
+preimages of sets in M' is a \<sigma>-algebra on \<Omega>."
+
+definition preimage :: "('a \<Rightarrow> 'b) \<Rightarrow> 'b set \<Rightarrow> 'a set"
+  where "preimage f T = {s. \<exists>t\<in>T. f s = t}"
+
+lemma preimage_sigma_on_domain: 
+  assumes sa: "sigma_algebra \<Omega>' M'"
+    shows "sigma_algebra (preimage f \<Omega>') {R. \<exists>S'\<in>M'. R = preimage f S'}"
+proof - 
+  let ?N = "{R. \<exists>S'\<in>M'. R = preimage f S'}"
+  let ?\<Omega> = "preimage f \<Omega>'"
+
+  have "?N \<subseteq> Pow ?\<Omega>" 
+  proof 
+    fix S
+    assume "S \<in> ?N"
+    hence "\<exists>S'\<in>M'. S = preimage f S'"
+      by simp
+    then obtain S' where "S = preimage f S'" and "S' \<subseteq> \<Omega>'" and "S' \<in> M'" 
+      using sa sigma_algebra_omega_c_cu_closed PowD subsetD by metis 
+    thus "S \<in> Pow ?\<Omega>"
+      unfolding preimage_def by auto 
+  qed 
+
+  moreover have "?\<Omega> \<in> ?N"
+    using sa sigma_algebra_omega_c_cu_closed by auto
+
+  moreover have "complement_closed ?\<Omega> ?N" sorry 
+
+  moreover have "countable_union_closed ?N" sorry 
+
+  ultimately show "sigma_algebra ?\<Omega> ?N"
+    by (simp add: sigma_algebra_omega_c_cu_closed)
+qed 
 
 section "Generators"
 
