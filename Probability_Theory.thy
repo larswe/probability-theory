@@ -34,6 +34,42 @@ proof -
     unfolding Least_def by (simp add: subset_antisym the_equality)
 qed
 
+(* The preimage of a set under a given mapping. *)
+definition preimage :: "('a \<Rightarrow> 'b) \<Rightarrow> 'b set \<Rightarrow> 'a set"
+  where "preimage f T = {s. \<exists>t\<in>T. f s = t}"
+
+lemma preimage_union: 
+  shows "preimage f (\<Union>M) = (\<Union>S\<in>M. preimage f S)"
+proof (rule ; rule) 
+  fix x 
+  assume "x \<in> preimage f (\<Union>M)"
+  hence "x \<in> {s. \<exists>t\<in>(\<Union>M). f s = t}"
+    using preimage_def by metis 
+  thus "x \<in> (\<Union>S\<in>M. preimage f S)"
+    by (simp add: preimage_def)
+next
+  fix x 
+  assume "x \<in> (\<Union>S\<in>M. preimage f S)"
+  thus "x \<in> preimage f (\<Union>M)"
+    by (simp add: preimage_def)
+qed 
+
+lemma preimage_set_diff: 
+  shows "preimage f (R-S) = (preimage f R) - (preimage f S)"
+proof (rule ; rule)
+  fix x 
+  assume "x \<in> preimage f (R - S)"
+  hence "x \<in> {s. \<exists>t\<in>(R-S). f s = t}"
+    using preimage_def by metis 
+  thus "x \<in> preimage f R - preimage f S"
+    by (simp add: preimage_def)
+next 
+  fix x
+  assume "x \<in> preimage f R - preimage f S"
+  thus "x \<in> preimage f (R - S)"
+    by (simp add: preimage_def) 
+qed 
+
 section "Sets"
 
 subsection "Set operations"
@@ -1587,10 +1623,8 @@ qed
 text "If \<Omega> and \<Omega>' are sets, M' a \<sigma>-algebra on \<Omega>' and T: \<Omega> \<rightarrow> \<Omega>' a mapping, then the collection of 
 preimages of sets in M' is a \<sigma>-algebra on \<Omega>."
 
-definition preimage :: "('a \<Rightarrow> 'b) \<Rightarrow> 'b set \<Rightarrow> 'a set"
-  where "preimage f T = {s. \<exists>t\<in>T. f s = t}"
-
 lemma preimage_sigma_on_domain: 
+  fixes f :: "'a \<Rightarrow> 'b"
   assumes sa: "sigma_algebra \<Omega>' M'"
     shows "sigma_algebra (preimage f \<Omega>') {R. \<exists>S'\<in>M'. R = preimage f S'}"
 proof - 
@@ -1603,7 +1637,7 @@ proof -
     assume "S \<in> ?N"
     hence "\<exists>S'\<in>M'. S = preimage f S'"
       by simp
-    then obtain S' where "S = preimage f S'" and "S' \<subseteq> \<Omega>'" and "S' \<in> M'" 
+    then obtain S' where "S = preimage f S'" and "S' \<subseteq> \<Omega>'"
       using sa sigma_algebra_omega_c_cu_closed PowD subsetD by metis 
     thus "S \<in> Pow ?\<Omega>"
       unfolding preimage_def by auto 
@@ -1612,9 +1646,44 @@ proof -
   moreover have "?\<Omega> \<in> ?N"
     using sa sigma_algebra_omega_c_cu_closed by auto
 
-  moreover have "complement_closed ?\<Omega> ?N" sorry 
+  moreover have "(\<forall>S\<in>?N. ?\<Omega> - S \<in> ?N)"
+  proof 
+    fix S
+    assume "S \<in> ?N"
+    then obtain S' where S'_M': "S' \<in> M'" and "S = preimage f S'"
+      by blast
+    hence "?\<Omega> - S = (preimage f \<Omega>') - (preimage f S')"
+      by simp
+    hence "?\<Omega> - S = preimage f (\<Omega>' - S')"
+      by (simp add: preimage_set_diff)  
+    moreover have "(\<Omega>' - S') \<in> M'" 
+      using sigma_algebra_omega_c_ci_closed sa S'_M' unfolding complement_closed_def by blast
+    ultimately show "?\<Omega> - S \<in> ?N "
+      by auto
+  qed 
+  hence "complement_closed ?\<Omega> ?N"
+    unfolding complement_closed_def using calculation(2) by blast 
 
-  moreover have "countable_union_closed ?N" sorry 
+  moreover have "\<forall>A :: nat \<Rightarrow> 'a set. range A \<subseteq> ?N \<longrightarrow> \<Union> (range A) \<in> ?N"
+  proof (rule ; rule)
+    fix A :: "nat \<Rightarrow> 'a set"
+    assume "range A \<subseteq> ?N" 
+    hence "\<forall>n. \<exists>S'\<in>M'. A n = preimage f S'" by auto 
+    then obtain B where B_choice: "\<forall>n. B n \<in> M' \<and> A n = preimage f (B n)"
+      by metis
+    hence "\<Union>(range A) = (\<Union>S\<in>(range B). preimage f S)" 
+      by simp  
+    hence "\<Union>(range A) = preimage f (\<Union>(range B))"
+      using preimage_union by metis 
+    moreover have "range B \<subseteq> M'"
+      by (simp add: B_choice image_subsetI)
+    hence "(\<Union>(range B)) \<in> M'"
+      using sa sigma_algebra_omega_c_cu_closed B_choice unfolding countable_union_closed_def by auto  
+    ultimately show  "\<Union> (range A) \<in> ?N"
+      by blast
+  qed 
+  hence "countable_union_closed ?N"
+    unfolding countable_union_closed_def using calculation(2) by blast 
 
   ultimately show "sigma_algebra ?\<Omega> ?N"
     by (simp add: sigma_algebra_omega_c_cu_closed)
