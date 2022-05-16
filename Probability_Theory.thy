@@ -1668,9 +1668,10 @@ proof -
   proof (rule ; rule)
     fix A :: "nat \<Rightarrow> 'a set"
     assume "range A \<subseteq> ?N" 
-    hence "\<forall>n. \<exists>S'\<in>M'. A n = preimage f S'" by auto 
+    hence "\<forall>n. \<exists>S'\<in>M'. A n = preimage f S'" 
+      by auto 
     then obtain B where B_choice: "\<forall>n. B n \<in> M' \<and> A n = preimage f (B n)"
-      by metis
+      by metis 
     hence "\<Union>(range A) = (\<Union>S\<in>(range B). preimage f S)" 
       by simp  
     hence "\<Union>(range A) = preimage f (\<Union>(range B))"
@@ -1689,10 +1690,94 @@ proof -
     by (simp add: sigma_algebra_omega_c_cu_closed)
 qed 
 
+text "For the infinite set \<Omega>, M consists of all S \<subseteq> \<Omega>, such that either S or -S is finite, then 
+M is an algebra..."
+
+lemma finite_cofinite_algebra:
+  assumes infinite_ground: "infinite \<Omega>"
+  shows "algebra \<Omega> {S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (\<Omega>-S))}"
+proof - 
+  let ?M = "{S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (\<Omega>-S))}"
+  
+  have "?M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> ?M"
+    by auto  
+
+  moreover have "(\<forall>S\<in>?M. \<Omega> - S \<in> ?M)"  
+  proof 
+    fix S 
+    assume S_in_M: "S \<in> ?M"
+    thus "\<Omega> - S \<in> ?M"
+    proof (cases "finite S")
+      case True
+      hence "finite (\<Omega>-(\<Omega>-S))"
+        by (simp add: Diff_Diff_Int)
+      then show ?thesis
+        by simp 
+    next
+      case False
+      then show ?thesis
+        using S_in_M by auto
+    qed
+  qed
+  hence "complement_closed \<Omega> ?M" 
+    unfolding complement_closed_def by blast  
+  
+  moreover have "(\<forall>S\<in>?M. \<forall>T\<in>?M. S \<inter> T \<in> ?M)" 
+  proof (rule ; rule)
+    fix S T assume S_in_M: "S \<in> ?M" and T_in_M: "T \<in> ?M"
+    then consider (F) "finite S \<or> finite T"  | (II) "infinite S \<and> infinite T"
+      by auto
+    thus "S \<inter> T \<in> ?M"
+    proof cases
+      case F
+      then show ?thesis
+        using S_in_M by blast 
+    next
+      case II
+      consider (fin_int) "finite (S \<inter> T)" | (inf_int) "infinite (S \<inter> T)"
+        by fast 
+      then show ?thesis 
+      proof cases
+        case fin_int
+        then show ?thesis
+          using S_in_M by auto 
+      next
+        case inf_int
+        moreover have "finite (\<Omega> - S)"
+          using II S_in_M by auto
+        moreover have "finite (\<Omega> - T)"
+          using II T_in_M by auto
+        moreover have "\<Omega> - (S \<inter> T) = (\<Omega> - S) \<union> (\<Omega> - T)"
+          by auto 
+        ultimately show ?thesis
+          using S_in_M by auto 
+      qed 
+    qed 
+  qed 
+  hence "finite_inter_closed ?M"
+    unfolding finite_inter_closed_def by blast 
+
+  ultimately show "algebra \<Omega> ?M"
+    by (simp add: algebra_omega_c_fi_closed) 
+qed
+
+text "...but not a \<sigma>-algebra."
+
+lemma finite_cofinite_no_sigma:
+  assumes infinite_ground: "infinite \<Omega>"
+  shows "\<not>sigma_algebra \<Omega> {S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (\<Omega>-S))}"
+proof - 
+  let ?M = "{S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (-S))}"
+  
+
+
+  show "\<not>sigma_algebra \<Omega> ?M" sorry
+qed
+
 section "Generators"
 
 text "'sigma_sets \<Omega> M' describes the smallest sigma algebra containing all sets in M.
-      The LEAST operator ensures uniqueness."
+      The LEAST operator guarantees uniqueness."
 lemma sigma_sets_Least: 
   assumes M_Pow: "M \<subseteq> Pow \<Omega>"
   shows "sigma_sets \<Omega> M = (LEAST N. M \<subseteq> N \<and> sigma_algebra \<Omega> N)"
@@ -1708,8 +1793,8 @@ proof -
     using sigma_sets_least_sigma_algebra M_Pow image_ident by metis 
 qed
 
-definition sigma_generator :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
-  where "sigma_generator N \<Omega> M = (M = sigma_sets \<Omega> N)"
+definition generates_sigma_algebra :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
+  where "generates_sigma_algebra N \<Omega> M = (M = sigma_sets \<Omega> N)"
   
 
 end
