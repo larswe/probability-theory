@@ -77,6 +77,86 @@ lemma inj_infinite_image:
     shows "infinite (f ` A)"
   by (meson finite_imageD inf inj inj_def inj_onI)
 
+lemma even_inf: 
+  shows "infinite ((\<lambda>n::nat. 2 * n) ` UNIV)"
+    by (simp add: range_inj_infinite injI)
+
+lemma odd_inf: 
+  shows "infinite ((\<lambda>n::nat. 2 * n + 1) ` UNIV)"
+  by (simp add: range_inj_infinite injI)
+
+thm infinite_descent 
+
+lemma nat_remainder: 
+  fixes x m :: nat
+  assumes m_pos: "m > 0"
+      and x_pos: "x > 0"
+  shows "\<exists>k r :: nat. x = k * m + r \<and> r < m"  
+proof (induction x)
+  case 0
+  then show ?case
+    using m_pos by auto 
+next
+  case (Suc x)
+  then obtain k r :: nat where ind_hyp: "x = k * m + r \<and> r < m"
+    by auto
+  then consider (l) "r + 1 < m" | (eq) "r + 1 = m"
+    by linarith
+  then show ?case 
+  proof cases
+    case l
+    then show ?thesis
+      by (metis Suc_eq_plus1 add_Suc_right ind_hyp) 
+  next
+    case eq
+    then show ?thesis
+      by (metis Suc_eq_plus1 add_0 add_diff_cancel_right' diff_cancel2 ind_hyp 
+          linordered_semidom_class.add_diff_inverse m_pos mult_0 mult_Suc) 
+  qed 
+qed
+
+lemma even_odd_UNIV: 
+  shows "(UNIV :: nat set) = ((\<lambda>n::nat. 2 * n) ` UNIV) \<union> ((\<lambda>n::nat. 2 * n + 1) ` UNIV)"
+proof -
+  let ?E = "(\<lambda>n::nat. 2 * n) ` UNIV"
+  let ?O = "(\<lambda>n::nat. 2 * n + 1) ` UNIV"
+  have "\<forall>x. x \<in> ?E \<or> x \<in> ?O"
+  proof 
+    fix x :: nat
+    consider (0) "x = 0" | (p) "x > 0"
+      by auto
+    thus "x \<in> ?E \<or> x \<in> ?O"
+    proof cases
+      case 0
+      then show ?thesis
+        by simp 
+    next
+      case p
+      hence "\<exists>k r. x = k * 2 + r \<and> r < 2"
+        by (simp add: nat_remainder)
+      hence "\<exists>k r :: nat. x = k * 2 \<or> x = k * 2 + 1"
+        by (metis div_mult_self1 div_mult_self_is_m mod2_gr_0 mod_less neq0_conv plus_nat.add_0)
+      thus ?thesis by auto 
+    qed
+  qed 
+  thus ?thesis
+    by blast 
+qed
+  
+lemma even_odd_disjoint: 
+  shows "(\<lambda>n::nat. 2 * n) ` UNIV \<inter> (\<lambda>n::nat. 2 * n + 1) ` UNIV = {}"
+proof (rule ; rule)
+  let ?E = "(\<lambda>n::nat. 2 * n) ` UNIV"
+  let ?O = "(\<lambda>n::nat. 2 * n + 1) ` UNIV"
+  fix x :: nat
+  assume "x \<in> ?E \<inter> ?O"
+  then obtain n m :: nat where "x = 2 * n" and "x = 2 * m + 1"
+    by blast 
+  thus "x \<in> {}"
+    by (metis Suc_eq_plus1 double_not_eq_Suc_double) 
+qed
+  
+
 section "Sets"
 
 subsection "Set operations"
@@ -1776,60 +1856,33 @@ lemma finite_cofinite_no_sigma:
 proof - 
   let ?M = "{S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (\<Omega>-S))}"
 
-  obtain f :: "nat \<Rightarrow> 'a" where f_range: "range f \<subseteq> \<Omega>" and f_inj: "inj f"
-    using infinite_countable_subset infinite_ground by blast
-
-  let ?A = "(\<lambda>n. {f n})"
-
-  have "range ?A \<subseteq> ?M"
-    using f_range by auto 
-
   have "\<exists>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> ?M \<and> \<Union> (range A) \<notin> ?M"
   proof (cases "countable \<Omega>")
     case True
     then obtain f :: "nat \<Rightarrow> 'a" where f_sur: "range f = \<Omega>" and f_inj: "inj f"
       by (metis countable_as_injective_image infinite_ground)
     let ?E = "(\<lambda>n::nat. 2 * n) ` UNIV"
-    let ?O = "-?E"
+    let ?O = "(\<lambda>n::nat. 2 * n + 1) ` UNIV"
     let ?A = "(\<lambda>n. if n\<in>?E then {f n} else {})"
 
     have "\<Union> (range ?A) = image f ?E"
       by auto
-    moreover have "inj_on (\<lambda>n::nat. 2 * n) (UNIV :: nat set)"
-      by (simp add: injI)
-    hence E_inf: "infinite ?E"
-      by (simp add: range_inj_infinite)
-    hence "infinite (image f ?E)"
-      using f_inj inj_infinite_image by blast
+
+    moreover have "infinite (image f ?E)"
+      using f_inj inj_infinite_image even_inf by blast
+
     moreover have "infinite (\<Omega> - image f ?E)"  
     proof -
-      have "(UNIV :: nat set) = ?E \<union> ?O"
-        by simp
-      hence "image f (UNIV :: nat set) = (image f ?E) \<union> (image f ?O)"
-        by blast
-      hence "(image f (UNIV :: nat set) - image f ?E) = image f ?O"
+      have "?E \<inter> ?O = {}"
+        using even_odd_disjoint by auto 
+      hence "?O = UNIV - ?E"
+        by (metis Diff_cancel Diff_triv Int_Un_eq(2) Int_commute Un_Diff even_odd_UNIV)
+      hence "(image f UNIV - image f ?E) = image f ?O"
         by (metis Compl_eq_Diff_UNIV f_inj image_set_diff)
       hence "(\<Omega> - image f ?E) = image f ?O"
         using f_sur by fast 
       moreover have "infinite ?O" 
-      proof - 
-        have "\<forall>n\<in>?E. n + 1 \<in> ?O"
-        proof 
-          fix n 
-          assume "n \<in> ?E"
-          hence "(n+1) \<notin> ?E"
-            by (metis (no_types, lifting) add_diff_cancel_left' nat_1_eq_mult_iff numeral_eq_one_iff 
-                rangeE right_diff_distrib' semiring_norm(85)) 
-          thus "(n+1) \<in> ?O" 
-            by auto 
-        qed 
-        hence "image (\<lambda>n::nat. n + 1) ?E \<subseteq> ?O"
-          by auto
-        moreover have "inj (\<lambda>n::nat. n + 1)"
-          by auto
-        ultimately show ?thesis
-          by (meson E_inf finite_subset inj_infinite_image) 
-      qed 
+        using odd_inf by auto 
       ultimately show ?thesis
         by (simp add: f_inj inj_infinite_image) 
     qed
