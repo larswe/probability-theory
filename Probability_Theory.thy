@@ -70,6 +70,13 @@ next
     by (simp add: preimage_def) 
 qed 
 
+(* This is shown with inj_on f A as assumption but the provers don't find that. *)
+lemma inj_infinite_image:
+  assumes inj: "inj f"
+      and inf: "infinite A"
+    shows "infinite (f ` A)"
+  by (meson finite_imageD inf inj inj_def inj_onI)
+
 section "Sets"
 
 subsection "Set operations"
@@ -1767,11 +1774,97 @@ lemma finite_cofinite_no_sigma:
   assumes infinite_ground: "infinite \<Omega>"
   shows "\<not>sigma_algebra \<Omega> {S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (\<Omega>-S))}"
 proof - 
-  let ?M = "{S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (-S))}"
-  
+  let ?M = "{S. S \<subseteq> \<Omega> \<and> (finite S \<or> finite (\<Omega>-S))}"
 
+  obtain f :: "nat \<Rightarrow> 'a" where f_range: "range f \<subseteq> \<Omega>" and f_inj: "inj f"
+    using infinite_countable_subset infinite_ground by blast
 
-  show "\<not>sigma_algebra \<Omega> ?M" sorry
+  let ?A = "(\<lambda>n. {f n})"
+
+  have "range ?A \<subseteq> ?M"
+    using f_range by auto 
+
+  have "\<exists>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> ?M \<and> \<Union> (range A) \<notin> ?M"
+  proof (cases "countable \<Omega>")
+    case True
+    then obtain f :: "nat \<Rightarrow> 'a" where f_sur: "range f = \<Omega>" and f_inj: "inj f"
+      by (metis countable_as_injective_image infinite_ground)
+    let ?E = "(\<lambda>n::nat. 2 * n) ` UNIV"
+    let ?O = "-?E"
+    let ?A = "(\<lambda>n. if n\<in>?E then {f n} else {})"
+
+    have "\<Union> (range ?A) = image f ?E"
+      by auto
+    moreover have "inj_on (\<lambda>n::nat. 2 * n) (UNIV :: nat set)"
+      by (simp add: injI)
+    hence E_inf: "infinite ?E"
+      by (simp add: range_inj_infinite)
+    hence "infinite (image f ?E)"
+      using f_inj inj_infinite_image by blast
+    moreover have "infinite (\<Omega> - image f ?E)"  
+    proof -
+      have "(UNIV :: nat set) = ?E \<union> ?O"
+        by simp
+      hence "image f (UNIV :: nat set) = (image f ?E) \<union> (image f ?O)"
+        by blast
+      hence "(image f (UNIV :: nat set) - image f ?E) = image f ?O"
+        by (metis Compl_eq_Diff_UNIV f_inj image_set_diff)
+      hence "(\<Omega> - image f ?E) = image f ?O"
+        using f_sur by fast 
+      moreover have "infinite ?O" 
+      proof - 
+        have "\<forall>n\<in>?E. n + 1 \<in> ?O"
+        proof 
+          fix n 
+          assume "n \<in> ?E"
+          hence "(n+1) \<notin> ?E"
+            by (metis (no_types, lifting) add_diff_cancel_left' nat_1_eq_mult_iff numeral_eq_one_iff 
+                rangeE right_diff_distrib' semiring_norm(85)) 
+          thus "(n+1) \<in> ?O" 
+            by auto 
+        qed 
+        hence "image (\<lambda>n::nat. n + 1) ?E \<subseteq> ?O"
+          by auto
+        moreover have "inj (\<lambda>n::nat. n + 1)"
+          by auto
+        ultimately show ?thesis
+          by (meson E_inf finite_subset inj_infinite_image) 
+      qed 
+      ultimately show ?thesis
+        by (simp add: f_inj inj_infinite_image) 
+    qed
+    ultimately have "\<Union> (range ?A) \<notin> ?M"
+      by auto 
+    moreover have "\<forall>n. finite (?A n) \<and> (?A n) \<subseteq> \<Omega>"
+      using f_sur by auto
+    hence "range ?A \<subseteq> ?M"
+      by blast 
+    ultimately show ?thesis
+      by blast   
+  next
+    case False
+    obtain f :: "nat \<Rightarrow> 'a" where f_range: "range f \<subseteq> \<Omega>" and f_inj: "inj f"
+      using infinite_countable_subset infinite_ground by blast
+    let ?A = "(\<lambda>n. {f n})"
+
+    have "\<Union> (range ?A) = image f UNIV"
+      by auto 
+    moreover have "infinite (image f UNIV)" 
+      using f_inj finite_imageD by auto 
+    moreover have "uncountable \<Omega>"
+      using False by auto 
+    hence "infinite (\<Omega> - image f UNIV)"
+      by (simp add: uncountable_infinite uncountable_minus_countable)   
+    ultimately have "range ?A \<subseteq> ?M \<and> \<Union> (range ?A) \<notin> ?M" 
+      using f_range by auto 
+    thus ?thesis 
+      by meson  
+    qed
+    hence "\<not>(countable_union_closed ?M)" 
+      using countable_union_closed_def by (metis (no_types)) 
+
+  thus "\<not>sigma_algebra \<Omega> ?M" 
+    using sigma_algebra_omega_c_cu_closed by auto 
 qed
 
 section "Generators"
