@@ -85,8 +85,6 @@ lemma odd_inf:
   shows "infinite ((\<lambda>n::nat. 2 * n + 1) ` UNIV)"
   by (simp add: range_inj_infinite injI)
 
-thm infinite_descent 
-
 lemma nat_remainder: 
   fixes x m :: nat
   assumes m_pos: "m > 0"
@@ -1423,7 +1421,7 @@ qed
 
 subsubsection "Relations between Set Collections"
 
-lemma algebra_is_pi:
+theorem algebra_is_pi:
   assumes a: "algebra \<Omega> M"
   shows "pi_system \<Omega> M"
 proof - 
@@ -1435,7 +1433,7 @@ proof -
     by (simp add: pi_system.intro pi_system_axioms.intro) 
 qed
 
-lemma sigma_is_algebra: 
+theorem sigma_is_algebra: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "algebra \<Omega> M"
 proof - 
@@ -1447,7 +1445,7 @@ proof -
     by (simp add: algebra_omega_c_fu_closed) 
 qed
 
-lemma sigma_is_mono: 
+theorem sigma_is_mono: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "monotone_class \<Omega> M"
 proof - 
@@ -1465,7 +1463,7 @@ proof -
     unfolding monotone_class_def monotone_class_axioms_def subset_class_def by auto 
 qed
 
-lemma algebra_is_sigma_iff_mono: 
+theorem algebra_is_sigma_iff_mono: 
   assumes a: "algebra \<Omega> M"
   shows "sigma_algebra \<Omega> M = monotone_class \<Omega> M"
 proof 
@@ -1482,7 +1480,7 @@ next
     by (meson algebra_omega_c_fi_closed a sigma_algebra_omega_c_cu_closed) 
 qed
 
-lemma sigma_is_Dynkin:
+theorem sigma_is_Dynkin:
   assumes sa: "sigma_algebra \<Omega> M"
   shows "Dynkin_system \<Omega> M"
 proof - 
@@ -1503,7 +1501,7 @@ proof -
     by (simp add: sa sigma_algebra_imp_Dynkin_system)
 qed 
 
-lemma Dynkin_is_sigma_iff_pi: 
+theorem Dynkin_is_sigma_iff_pi: 
   assumes dynk: "Dynkin_system \<Omega> M"
   shows "sigma_algebra \<Omega> M = pi_system \<Omega> M"
 proof 
@@ -1527,7 +1525,7 @@ next
     using sigma_algebra_omega_c_cu_closed by auto
 qed
 
-lemma Dynkin_is_mono:
+theorem Dynkin_is_mono:
   assumes dynk: "Dynkin_system \<Omega> M"
   shows "monotone_class \<Omega> M"
 proof - 
@@ -1539,7 +1537,7 @@ proof -
     by (simp add: monotone_class.intro monotone_class_axioms.intro subset_class.intro) 
 qed
 
-lemma sigma_Pow_is_sigma:
+theorem sigma_Pow_is_sigma:
   assumes sa: "sigma_algebra \<Omega> M"
       and subseq: "S \<in> M"
     shows "sigma_algebra S (Pow S)"
@@ -1552,51 +1550,89 @@ proof -
     by (simp add: sigma_algebra_omega_c_cu_closed) 
 qed 
 
-lemma sigma_inter_is_sigma:
+theorem sigma_inter_is_sigma:
   assumes sas: "\<forall>M\<in>X. sigma_algebra \<Omega> M"
       and non_empty: "X \<noteq> {}"
     shows "sigma_algebra \<Omega> (\<Inter>M\<in>X. M)"
 proof - 
+  let ?I = "(\<Inter>M\<in>X. M)"
+
   have sa_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
     by (meson sas sigma_algebra_omega_c_cu_closed)
 
-  have "(\<Inter>M\<in>X. M) \<subseteq> Pow \<Omega>" 
+  have "?I \<subseteq> Pow \<Omega>" 
   proof 
     fix x
-    assume "x \<in> (\<Inter>M\<in>X. M)"
+    assume "x \<in> ?I"
     then obtain M where "M \<in> X \<and> x \<in> M" 
       using non_empty by auto 
     thus "x \<in> Pow \<Omega>"
       using sa_properties by auto 
   qed 
 
-  moreover have "\<Omega> \<in> (\<Inter>M\<in>X. M)"  
-    using sa_properties non_empty by simp 
+  moreover have "\<Omega> \<in> ?I"  
+    using sa_properties by simp 
  
-  moreover have "complement_closed \<Omega> (\<Inter>M\<in>X. M)" 
+  moreover have "complement_closed \<Omega> ?I" 
     using sa_properties unfolding complement_closed_def by blast
 
-  moreover have "countable_union_closed (\<Inter>M\<in>X. M)" 
+  moreover have "countable_union_closed ?I" 
     unfolding countable_union_closed_def 
   proof 
-    show "(\<Inter>M\<in>X. M) \<noteq> {}"
+    show "?I \<noteq> {}"
       using calculation(2) by auto
   next 
-    show "\<forall>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> (\<Inter>M\<in>X. M) \<longrightarrow> \<Union> (range A) \<in> (\<Inter>M\<in>X. M)"
-    proof (rule ; rule)
-      fix A :: "nat \<Rightarrow> 'a set"
-      assume "range A \<subseteq> (\<Inter>M\<in>X. M)"
-      hence "\<forall>M\<in>X. range A \<subseteq> M" by auto 
-      thus "\<Union> (range A) \<in> (\<Inter>M\<in>X. M)" 
-        using sa_properties unfolding countable_union_closed_def by simp
-    qed
+    show "\<forall>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> ?I \<longrightarrow> \<Union> (range A) \<in> ?I"
+      using sa_properties unfolding countable_union_closed_def
+      by (simp add: le_Inf_iff) 
   qed
 
   ultimately show ?thesis
     by (simp add: sigma_algebra_omega_c_cu_closed)
 qed
 
-lemma sigma_ndu_is_algebra:
+lemma Dynkin_inter_is_Dynkin:
+  assumes dynks: "\<forall>M\<in>X. Dynkin_system \<Omega> M"
+      and non_empty: "X \<noteq> {}"
+    shows "Dynkin_system \<Omega> (\<Inter>M\<in>X. M)"
+proof - 
+  let ?I = "(\<Inter>M\<in>X. M)"
+
+  have dy_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
+    by (metis Dynkin_omega_diff_ndu_closed dynks)
+
+  have "?I \<subseteq> Pow \<Omega>" 
+  proof 
+    fix x
+    assume "x \<in> ?I"
+    then obtain M where "M \<in> X \<and> x \<in> M" 
+      using non_empty by auto 
+    thus "x \<in> Pow \<Omega>"
+      using dy_properties by auto 
+  qed 
+
+  moreover have "\<Omega> \<in> ?I"  
+    using dy_properties by simp 
+ 
+  moreover have "set_diff_closed ?I" 
+    using dy_properties unfolding set_diff_closed_def by auto 
+
+  moreover have "non_decreasing_union_closed ?I" 
+    unfolding non_decreasing_union_closed_def 
+  proof 
+    show "?I \<noteq> {}"
+      using calculation(2) by auto
+  next 
+    show "\<forall>A. range A \<subseteq> ?I \<and> non_decreasing A \<longrightarrow> \<Union> (range A) \<in> ?I"
+      using dy_properties unfolding non_decreasing_union_closed_def
+      by (simp add: le_Inf_iff) 
+  qed
+
+  ultimately show ?thesis
+    by (simp add: Dynkin_omega_diff_ndu_closed)
+qed
+
+theorem sigma_ndu_is_algebra:
   assumes sas: "\<forall>n::nat. sigma_algebra \<Omega> (X n)"
       and non_dec: "non_decreasing X"
     shows "algebra \<Omega> (\<Union>(range X))"
@@ -1650,7 +1686,7 @@ qed
 
 text "If M is a \<sigma>-algebra, and R \<subseteq> \<Omega>, then 'R \<inter> M' = {R \<inter> S : S \<in> M} is a \<sigma>-algebra on R."
 
-lemma sigma_inter_coll_is_sigma:
+theorem sigma_inter_coll_is_sigma:
   assumes sa: "sigma_algebra \<Omega> M"
       and subseq: "R \<subseteq> \<Omega>"
     shows "sigma_algebra R {C. \<exists>A \<in> M. C = R \<inter> A}"
@@ -1710,7 +1746,7 @@ qed
 text "If \<Omega> and \<Omega>' are sets, M' a \<sigma>-algebra on \<Omega>' and T: \<Omega> \<rightarrow> \<Omega>' a mapping, then the collection of 
 preimages of sets in M' is a \<sigma>-algebra on \<Omega>."
 
-lemma preimage_sigma_on_domain: 
+theorem preimage_sigma_on_domain: 
   fixes f :: "'a \<Rightarrow> 'b"
   assumes sa: "sigma_algebra \<Omega>' M'"
     shows "sigma_algebra (preimage f \<Omega>') {R. \<exists>S'\<in>M'. R = preimage f S'}"
@@ -1871,27 +1907,22 @@ proof -
     moreover have "infinite (image f ?E)"
       using f_inj inj_infinite_image even_inf by blast
 
-    moreover have "infinite (\<Omega> - image f ?E)"  
-    proof -
-      have "?E \<inter> ?O = {}"
-        using even_odd_disjoint by auto 
-      hence "?O = UNIV - ?E"
-        by (metis Diff_cancel Diff_triv Int_Un_eq(2) Int_commute Un_Diff even_odd_UNIV)
-      hence "(image f UNIV - image f ?E) = image f ?O"
-        by (metis Compl_eq_Diff_UNIV f_inj image_set_diff)
-      hence "(\<Omega> - image f ?E) = image f ?O"
-        using f_sur by fast 
-      moreover have "infinite ?O" 
-        using odd_inf by auto 
-      ultimately show ?thesis
-        by (simp add: f_inj inj_infinite_image) 
-    qed
+    moreover have "?O = UNIV - ?E"
+      by (metis even_odd_disjoint even_odd_UNIV Diff_cancel 
+          Diff_triv Int_Un_eq(2) Int_commute Un_Diff)
+    hence "(\<Omega> - image f ?E) = image f ?O"
+      by (metis Compl_eq_Diff_UNIV f_inj image_set_diff f_sur)
+    hence "infinite (\<Omega> - image f ?E)"  
+      using f_inj inj_infinite_image odd_inf by auto 
+
     ultimately have "\<Union> (range ?A) \<notin> ?M"
       by auto 
+
     moreover have "\<forall>n. finite (?A n) \<and> (?A n) \<subseteq> \<Omega>"
       using f_sur by auto
     hence "range ?A \<subseteq> ?M"
       by blast 
+
     ultimately show ?thesis
       by blast   
   next
@@ -1922,8 +1953,8 @@ qed
 
 section "Generators"
 
-text "'sigma_sets \<Omega> M' describes the smallest sigma algebra containing all sets in M.
-      The LEAST operator guarantees uniqueness."
+(* 'sigma_sets \<Omega> M' describes the smallest sigma algebra containing all sets in M.
+   The LEAST operator guarantees uniqueness. *)
 lemma sigma_sets_Least: 
   assumes M_Pow: "M \<subseteq> Pow \<Omega>"
   shows "sigma_sets \<Omega> M = (LEAST N. M \<subseteq> N \<and> sigma_algebra \<Omega> N)"
@@ -1941,6 +1972,21 @@ qed
 
 definition generates_sigma_algebra :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
   where "generates_sigma_algebra N \<Omega> M = (M = sigma_sets \<Omega> N)"
+
+lemma Dynkin_Least:
+  assumes M_Pow: "M \<subseteq> Pow \<Omega>"
+  shows "Dynkin \<Omega> M = (LEAST N. M \<subseteq> N \<and> Dynkin_system \<Omega> N)"
+proof - 
+  have "{N. M \<subseteq> N \<and> Dynkin_system \<Omega> N} \<noteq> {}"
+    using Dynkin_system_trivial M_Pow by auto
+  hence "Dynkin_system \<Omega> (\<Inter>N\<in>{N. M \<subseteq> N \<and> Dynkin_system \<Omega> N}. N)"
+    by (metis (mono_tags, lifting) Dynkin_inter_is_Dynkin mem_Collect_eq)
+  hence "(LEAST N. M \<subseteq> N \<and> Dynkin_system \<Omega> N) = (\<Inter>N\<in>{N. M \<subseteq> N \<and> Dynkin_system \<Omega> N}. N)"
+    using inter_is_Least_if_P
+    by (metis (mono_tags, lifting) INT_greatest mem_Collect_eq)
+  thus ?thesis
+    by (metis (mono_tags, lifting) Collect_cong Dynkin_def image_ident) 
+qed
   
 
 end
