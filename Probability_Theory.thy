@@ -1987,6 +1987,79 @@ proof -
   thus ?thesis
     by (metis (mono_tags, lifting) Collect_cong Dynkin_def image_ident) 
 qed
+
+definition generates_dynkin_system :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
+  where "generates_dynkin_system N \<Omega> M = (M = Dynkin \<Omega> N)"
+
+subsubsection "Least Monotone classes"
+
+definition Mono :: "'a set \<Rightarrow> 'a set set \<Rightarrow> 'a set set" where
+  "Mono \<Omega> M =  (\<Inter>{N. monotone_class \<Omega> N \<and> M \<subseteq> N})"
+
+lemma monotone_classI:
+  assumes "M \<subseteq> Pow \<Omega>"
+      and "non_decreasing_union_closed M"
+      and "non_increasing_inter_closed M"
+    shows "monotone_class \<Omega> M"
+  by (simp add: assms monotone_class_axioms.intro monotone_class_def subset_class.intro)
+
+lemma monotone_class_trivial:
+  shows "monotone_class A (Pow A)"
+  by (simp add: sigma_algebra_Pow sigma_is_mono)
+
+lemma monotone_class_Mono:
+  assumes M_Pow: "M \<subseteq> Pow (\<Omega>)"
+      and non_empty: "M \<noteq> {}"
+  shows "monotone_class \<Omega> (Mono \<Omega> M)"
+proof (rule monotone_classI)
+  show "Mono \<Omega> M \<subseteq> Pow \<Omega>"
+  proof 
+    fix x 
+    assume "x \<in> Mono \<Omega> M"
+    then obtain N where "monotone_class \<Omega> N \<and> x \<in> N"
+      by (metis (no_types, lifting) Inter_iff Mono_def M_Pow mem_Collect_eq monotone_class_trivial)
+    thus "x \<in> Pow \<Omega>"
+      by (meson PowI monotone_class_def subset_class.sets_into_space)  
+  qed 
+next
+  have "\<forall>A. range A \<subseteq> Mono \<Omega> M \<and> non_decreasing A \<longrightarrow> \<Union> (range A) \<in> Mono \<Omega> M"
+  proof (rule ; rule ; erule conjE)
+    fix A :: "nat \<Rightarrow> 'a set"
+    assume A_range: "range A \<subseteq> Mono \<Omega> M" and A_nd: "non_decreasing A"
+    thus "\<Union> (range A) \<in> Mono \<Omega> M" 
+      unfolding Mono_def monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+      by blast 
+  qed 
+  thus "non_decreasing_union_closed (Mono \<Omega> M)"
+    unfolding non_decreasing_union_closed_def Mono_def 
+    using monotone_class_trivial M_Pow non_empty by blast 
+next
+  have "\<forall>A. range A \<subseteq> Mono \<Omega> M \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> Mono \<Omega> M"
+  proof (rule ; rule ; erule conjE)
+    fix A :: "nat \<Rightarrow> 'a set"
+    assume A_range: "range A \<subseteq> Mono \<Omega> M" and A_ni: "non_increasing A"
+    thus "\<Inter> (range A) \<in> Mono \<Omega> M"
+      unfolding Mono_def monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+      by blast 
+  qed 
+  thus "non_increasing_inter_closed (Mono \<Omega> M)"
+    unfolding non_increasing_inter_closed_def Mono_def 
+    using monotone_class_trivial M_Pow non_empty by blast 
+qed
+
+lemma Mono_Least:
+  assumes M_Pow: "M \<subseteq> Pow \<Omega>"
+      and non_empty: "M \<noteq> {}"
+  shows "Mono \<Omega> M = (LEAST N. M \<subseteq> N \<and> monotone_class \<Omega> N)"
+proof - 
+  have "monotone_class \<Omega> (\<Inter> {N. monotone_class \<Omega> N \<and> M \<subseteq> N})"
+    using assms monotone_class_Mono unfolding Mono_def by blast 
+  hence "(LEAST N. M \<subseteq> N \<and> monotone_class \<Omega> N) = (\<Inter>N\<in>{N. M \<subseteq> N \<and> monotone_class \<Omega> N}. N)"
+    using inter_is_Least_if_P
+    by (smt (verit) image_ident le_Inf_iff mem_Collect_eq set_eq_subset)
+  thus ?thesis
+    by (metis (mono_tags, lifting) Collect_cong Mono_def image_ident)
+qed
   
 
 end
