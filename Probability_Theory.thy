@@ -1953,6 +1953,10 @@ qed
 
 section "Generators"
 
+subsection "Least Set Collections"
+
+subsubsection "Least Sigma Algebras"
+
 (* 'sigma_sets \<Omega> M' describes the smallest sigma algebra containing all sets in M.
    The LEAST operator guarantees uniqueness. *)
 lemma sigma_sets_Least: 
@@ -1972,6 +1976,8 @@ qed
 
 definition generates_sigma_algebra :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
   where "generates_sigma_algebra N \<Omega> M = (M = sigma_sets \<Omega> N)"
+
+subsubsection "Least Dynkin systems"
 
 lemma Dynkin_Least:
   assumes M_Pow: "M \<subseteq> Pow \<Omega>"
@@ -2060,6 +2066,130 @@ proof -
   thus ?thesis
     by (metis (mono_tags, lifting) Collect_cong Mono_def image_ident)
 qed
-  
+
+definition generates_monotone_class :: "'a set set \<Rightarrow> 'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
+  where "generates_monotone_class N \<Omega> M = (M = Mono \<Omega> N)"
+
+subsection "Relations between least collections"
+
+text "If M = A, a single set, then \<sigma>{M} = \<sigma>{A} = {{}, A, \<Omega>-A, \<Omega>}."
+corollary
+  assumes subseq: "A \<subseteq> \<Omega>"
+  shows "sigma_sets \<Omega> {A} = {{}, A, \<Omega>-A, \<Omega>}"
+  by (simp add: sigma_sets_singleton subseq)
+
+text "If M is a \<sigma>-algebra, then \<sigma>{M} = M"
+corollary 
+  assumes "sigma_algebra \<Omega> M"
+  shows "sigma_sets \<Omega> M = M"
+  by (simp add: assms sigma_algebra.sigma_sets_eq)
+
+text "Let M be an algebra. Then \<MM>(M) = \<sigma>(M)."
+theorem algebra_least_sigma_mono:
+  assumes alg: "algebra \<Omega> M"
+  shows "Mono \<Omega> M = sigma_sets \<Omega> M"
+proof 
+  have "sigma_algebra \<Omega> (sigma_sets \<Omega> M)"
+    by (metis algebra_iff_Un assms sigma_algebra_sigma_sets)
+  hence "monotone_class \<Omega> (sigma_sets \<Omega> M)"
+    by (simp add: sigma_is_mono)
+  moreover have "M \<subseteq> (sigma_sets \<Omega> M)"
+    by (simp add: sigma_sets_superset_generator)
+  moreover have M_non_empty_subseq: "M \<noteq> {} \<and> M \<subseteq> Pow \<Omega>"
+    using algebra.top alg algebra_iff_Int empty_iff by metis 
+  hence "Mono \<Omega> M = (LEAST N. M \<subseteq> N \<and> monotone_class \<Omega> N)"
+    using Mono_Least by auto
+  ultimately show "Mono \<Omega> M \<subseteq> sigma_sets \<Omega> M"
+    by (metis (mono_tags, lifting) Inter_lower Mono_def mem_Collect_eq) 
+
+  have "M \<noteq> {} \<and> M \<subseteq> Pow \<Omega>"
+    using algebra.top alg algebra_iff_Int empty_iff by metis 
+  hence mono_mono: "monotone_class \<Omega> (Mono \<Omega> M)"
+    by (simp add: monotone_class_Mono)
+
+  moreover have "algebra \<Omega> (Mono \<Omega> M)" 
+  proof -
+    have mono_Pow: "(Mono \<Omega> M) \<subseteq> Pow \<Omega>"
+      using mono_mono monotone_class_def subset_class_def by blast
+
+    moreover have M_subseq: "M \<subseteq> (Mono \<Omega> M)"
+      unfolding Mono_def by auto 
+    hence "\<Omega> \<in> (Mono \<Omega> M)" 
+      using alg algebra.top by auto 
+
+    moreover have "complement_closed \<Omega> (Mono \<Omega> M)"
+      unfolding complement_closed_def 
+    proof (rule ; rule) 
+      show "Mono \<Omega> M = {} \<Longrightarrow> False"
+        using calculation(2) by auto
+    next 
+      fix S
+      assume "S \<in> Mono \<Omega> M"
+      thus "\<Omega> - S \<in> Mono \<Omega> M" sorry 
+    qed 
+
+    moreover have "finite_union_closed (Mono \<Omega> M)" 
+      unfolding finite_union_closed_def 
+    proof (rule) 
+      show "Mono \<Omega> M \<noteq> {}"
+        using calculation(2) by auto
+    next 
+      let ?\<xi> = "{S\<in>Mono \<Omega> M. \<forall>T\<in>M. S \<union> T \<in> Mono \<Omega> M}"
+      let ?\<xi>' = "{S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M}"
+      have "monotone_class \<Omega> ?\<xi>"
+        unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
+      proof (rule ; rule)
+        fix x
+        assume "x \<in> ?\<xi>"
+        thus "x \<in> Pow \<Omega>"
+          using mono_Pow by auto
+      next 
+        show "non_decreasing_union_closed ?\<xi>" sorry 
+      next 
+        show "non_increasing_inter_closed ?\<xi>" sorry
+      qed 
+
+      moreover have "M \<subseteq> ?\<xi>"
+        by (smt (verit) Ball_Collect M_subseq algebra_iff_Un assms subset_iff) 
+
+      ultimately have "?\<xi> = Mono \<Omega> M"
+        unfolding Mono_def by blast 
+      hence "\<forall>S\<in>M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M"
+        by (metis (no_types, lifting) mem_Collect_eq sup_commute)
+      hence "M \<subseteq> ?\<xi>'"
+        using M_subseq by blast 
+
+      moreover have "monotone_class \<Omega> ?\<xi>'" 
+        unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
+      proof (rule ; rule)
+        fix x
+        assume "x \<in> ?\<xi>'"
+        thus "x \<in> Pow \<Omega>"
+          using mono_Pow by auto 
+      next 
+        show "non_decreasing_union_closed ?\<xi>'" sorry 
+      next 
+        show "non_increasing_inter_closed ?\<xi>'" sorry
+      qed 
+
+      ultimately have "Mono \<Omega> M = ?\<xi>'" 
+        unfolding Mono_def by blast 
+      thus "\<forall>S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M"
+        by auto  
+    qed 
+
+    ultimately show ?thesis
+      by (simp add: algebra_omega_c_fu_closed) 
+  qed
+
+  ultimately have "sigma_algebra \<Omega> (Mono \<Omega> M)"
+    by (simp add: algebra_is_sigma_iff_mono)
+
+  moreover have "sigma_sets \<Omega> M = (LEAST N. M \<subseteq> N \<and> sigma_algebra \<Omega> N)" 
+    using sigma_sets_Least alg algebra_omega_c_fu_closed by metis
+
+  ultimately show "sigma_sets \<Omega> M \<subseteq> Mono \<Omega> M"
+    by (metis (no_types, lifting) Inter_greatest Mono_def mem_Collect_eq sigma_algebra.sigma_sets_subset)  
+qed
 
 end
