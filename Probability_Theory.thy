@@ -2401,4 +2401,18 @@ next
     by (metis (no_types, lifting) Inter_greatest Mono_def mem_Collect_eq sigma_algebra.sigma_sets_subset)  
 qed
 
+text "By suppressing the minimality of the monotone class, the following corollary emerges."
+
+lemma sigma_of_algebra_in_mono:
+  assumes alg: "algebra \<Omega> M"
+      and mono: "monotone_class \<Omega> N"
+      and subseq: "M \<subseteq> N"
+    shows "sigma_sets \<Omega> M \<subseteq> N"
+proof - 
+  have "Mono \<Omega> M \<subseteq> N"
+    using mono subseq unfolding Mono_def by auto 
+  thus ?thesis
+    using alg algebra_least_sigma_mono by auto 
+qed
+
 end
