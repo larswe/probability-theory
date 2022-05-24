@@ -271,6 +271,16 @@ lemma non_increasing_stay_out:
     shows "\<forall>m\<ge>n. x \<notin> A m"
   using base non_inc non_increasing_multistep by auto
 
+lemma nd_complement_ni: 
+  assumes nd: "non_decreasing A"
+  shows "non_increasing (\<lambda>n. \<Omega> - A n)"
+  using nd unfolding non_decreasing_def non_increasing_def by blast 
+
+lemma ni_complement_nd: 
+  assumes ni: "non_increasing A"
+  shows "non_decreasing (\<lambda>n. \<Omega> - A n)"
+  using ni unfolding non_decreasing_def non_increasing_def by blast 
+
 text "The de Morgan formulas are as follows:
 
 (i)  The elements that don't belong to any set in a family are exactly the ones that belong to every 
@@ -1999,6 +2009,8 @@ definition generates_dynkin_system :: "'a set set \<Rightarrow> 'a set \<Rightar
 
 subsubsection "Least Monotone classes"
 
+(* TODO : Move monotone_class convenience lemmas into different subsection *)
+
 definition Mono :: "'a set \<Rightarrow> 'a set set \<Rightarrow> 'a set set" where
   "Mono \<Omega> M =  (\<Inter>{N. monotone_class \<Omega> N \<and> M \<subseteq> N})"
 
@@ -2097,10 +2109,11 @@ proof
     by (simp add: sigma_sets_superset_generator)
   moreover have M_non_empty_subseq: "M \<noteq> {} \<and> M \<subseteq> Pow \<Omega>"
     using algebra.top alg algebra_iff_Int empty_iff by metis 
-  hence "Mono \<Omega> M = (LEAST N. M \<subseteq> N \<and> monotone_class \<Omega> N)"
+  hence Mono_least: "Mono \<Omega> M = (LEAST N. M \<subseteq> N \<and> monotone_class \<Omega> N)"
     using Mono_Least by auto
   ultimately show "Mono \<Omega> M \<subseteq> sigma_sets \<Omega> M"
     by (metis (mono_tags, lifting) Inter_lower Mono_def mem_Collect_eq) 
+next 
 
   have "M \<noteq> {} \<and> M \<subseteq> Pow \<Omega>"
     using algebra.top alg algebra_iff_Int empty_iff by metis 
@@ -2117,69 +2130,265 @@ proof
     hence "\<Omega> \<in> (Mono \<Omega> M)" 
       using alg algebra.top by auto 
 
-    moreover have "complement_closed \<Omega> (Mono \<Omega> M)"
-      unfolding complement_closed_def 
-    proof (rule ; rule) 
-      show "Mono \<Omega> M = {} \<Longrightarrow> False"
-        using calculation(2) by auto
-    next 
-      fix S
-      assume "S \<in> Mono \<Omega> M"
-      thus "\<Omega> - S \<in> Mono \<Omega> M" sorry 
-    qed 
-
-    moreover have "finite_union_closed (Mono \<Omega> M)" 
-      unfolding finite_union_closed_def 
-    proof (rule) 
-      show "Mono \<Omega> M \<noteq> {}"
-        using calculation(2) by auto
-    next 
+    moreover have "\<forall>S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. \<Omega> - S \<in> Mono \<Omega> M \<and> S \<union> T \<in> Mono \<Omega> M" 
+    proof -
       let ?\<xi> = "{S\<in>Mono \<Omega> M. \<forall>T\<in>M. S \<union> T \<in> Mono \<Omega> M}"
-      let ?\<xi>' = "{S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M}"
-      have "monotone_class \<Omega> ?\<xi>"
+      let ?\<xi>' = "{S\<in>Mono \<Omega> M. \<Omega> - S \<in> Mono \<Omega> M}"
+      let ?\<xi>'' = "{S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M}"
+        
+      have "Mono \<Omega> M = ?\<xi>''"
+      proof -
+        have "{} \<in> ?\<xi>''"
+          using M_subseq algebra_iff_Un assms by auto
+        hence ne_xi'': "?\<xi>'' \<noteq> {}"
+          by blast
+        hence ne_xi: "?\<xi> \<noteq> {}"
+          using M_subseq by blast 
+
+        have "Mono \<Omega> M = ?\<xi>"
+        proof 
+          have "monotone_class \<Omega> ?\<xi>"
+            unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
+          proof (rule ; rule)
+            fix x
+            assume "x \<in> ?\<xi>"
+            thus "x \<in> Pow \<Omega>"
+              using mono_Pow by auto
+          next 
+            have "\<forall>A. range A \<subseteq> ?\<xi> \<and> non_decreasing A \<longrightarrow> \<Union> (range A) \<in> ?\<xi>"
+            proof (rule ; rule ; erule conjE)
+              fix A :: "nat \<Rightarrow> 'a set"
+              assume A_rng: "range A \<subseteq> ?\<xi>" and A_nd: "non_decreasing A"
+              hence "range A \<subseteq> Mono \<Omega> M \<and> non_decreasing A"
+                by auto
+              hence "\<Union> (range A) \<in> Mono \<Omega> M" 
+                using mono_mono 
+                unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                by auto 
+              moreover have "\<forall>T\<in>M. \<Union> (range A) \<union> T \<in> Mono \<Omega> M"  
+              proof 
+                fix T
+                let ?B = "(\<lambda>n. A n \<union> T)"
+                assume "T \<in> M"
+                hence "\<forall>n. ?B n \<in> Mono \<Omega> M"
+                  using A_rng by auto
+                moreover have "non_decreasing ?B"
+                  using A_nd unfolding non_decreasing_def by blast
+                ultimately have "\<Union> (range ?B) \<in> Mono \<Omega> M" 
+                  using mono_mono 
+                  unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                  by auto 
+                thus "\<Union> (range A) \<union> T \<in> Mono \<Omega> M" 
+                  by auto 
+              qed
+               
+              ultimately show "\<Union> (range A) \<in> ?\<xi>"
+                by auto  
+            qed
+            thus "non_decreasing_union_closed ?\<xi>"
+              using ne_xi unfolding non_decreasing_union_closed_def by auto  
+          next 
+            have "\<forall>A. range A \<subseteq> ?\<xi> \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> ?\<xi>"
+            proof (rule ; rule ; erule conjE)
+              fix A :: "nat \<Rightarrow> 'a set"
+              assume A_rng: "range A \<subseteq> ?\<xi>" and A_ni: "non_increasing A"
+              hence "range A \<subseteq> Mono \<Omega> M \<and> non_increasing A"
+                by auto
+              hence "\<Inter> (range A) \<in> Mono \<Omega> M" 
+                using mono_mono 
+                unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                by auto 
+              moreover have "\<forall>T\<in>M. \<Inter> (range A) \<union> T \<in> Mono \<Omega> M"  
+              proof 
+                fix T
+                let ?B = "(\<lambda>n. A n \<union> T)"
+                assume "T \<in> M"
+                hence "\<forall>n. ?B n \<in> Mono \<Omega> M"
+                  using A_rng by blast 
+                moreover have "non_increasing ?B"
+                  using A_ni unfolding non_increasing_def by blast
+                ultimately have "\<Inter> (range ?B) \<in> Mono \<Omega> M" 
+                  using mono_mono 
+                  unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                  by auto 
+                thus "\<Inter> (range A) \<union> T \<in> Mono \<Omega> M" 
+                  by auto 
+              qed
+               
+              ultimately show "\<Inter> (range A) \<in> ?\<xi>"
+                by auto  
+            qed
+            thus "non_increasing_inter_closed ?\<xi>"
+              using ne_xi unfolding non_increasing_inter_closed_def by auto 
+          qed 
+          moreover have "M \<subseteq> ?\<xi>"
+            by (smt (verit) Ball_Collect M_subseq algebra_iff_Un assms subset_iff)  
+          ultimately show "Mono \<Omega> M \<subseteq> ?\<xi>"
+            unfolding Mono_def by blast 
+        next 
+          show "?\<xi> \<subseteq> Mono \<Omega> M" by auto  
+        qed
+        hence "\<forall>S\<in>Mono \<Omega> M. \<forall>T\<in>M. S \<union> T \<in> Mono \<Omega> M"
+          by blast
+        hence "M \<subseteq> ?\<xi>''"
+          by (smt (verit, ccfv_threshold) M_subseq in_mono mem_Collect_eq subsetI sup_commute)
+
+        moreover have "monotone_class \<Omega> ?\<xi>''" 
         unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
-      proof (rule ; rule)
-        fix x
-        assume "x \<in> ?\<xi>"
-        thus "x \<in> Pow \<Omega>"
-          using mono_Pow by auto
-      next 
-        show "non_decreasing_union_closed ?\<xi>" sorry 
-      next 
-        show "non_increasing_inter_closed ?\<xi>" sorry
+          proof (rule ; rule)
+            fix x
+            assume "x \<in> ?\<xi>''"
+            thus "x \<in> Pow \<Omega>"
+              using mono_Pow by auto
+          next 
+            have "\<forall>A. range A \<subseteq> ?\<xi>'' \<and> non_decreasing A \<longrightarrow> \<Union> (range A) \<in> ?\<xi>''"
+            proof (rule ; rule ; erule conjE)
+              fix A :: "nat \<Rightarrow> 'a set"
+              assume A_rng: "range A \<subseteq> ?\<xi>''" and A_nd: "non_decreasing A"
+              hence "range A \<subseteq> Mono \<Omega> M \<and> non_decreasing A"
+                by auto
+              hence "\<Union> (range A) \<in> Mono \<Omega> M" 
+                using mono_mono 
+                unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                by auto 
+              moreover have "\<forall>T\<in>Mono \<Omega> M. \<Union> (range A) \<union> T \<in> Mono \<Omega> M"  
+              proof 
+                fix T
+                let ?B = "(\<lambda>n. A n \<union> T)"
+                assume "T \<in> Mono \<Omega> M"
+                hence "\<forall>n. ?B n \<in> Mono \<Omega> M"
+                  using A_rng by auto
+                moreover have "non_decreasing ?B"
+                  using A_nd unfolding non_decreasing_def by blast
+                ultimately have "\<Union> (range ?B) \<in> Mono \<Omega> M" 
+                  using mono_mono 
+                  unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                  by auto 
+                thus "\<Union> (range A) \<union> T \<in> Mono \<Omega> M" 
+                  by auto 
+              qed
+               
+              ultimately show "\<Union> (range A) \<in> ?\<xi>''"
+                by auto  
+            qed
+            thus "non_decreasing_union_closed ?\<xi>''"
+              using ne_xi'' unfolding non_decreasing_union_closed_def by auto 
+          next 
+            have "\<forall>A. range A \<subseteq> ?\<xi>'' \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> ?\<xi>''"
+            proof (rule ; rule ; erule conjE)
+              fix A :: "nat \<Rightarrow> 'a set"
+              assume A_rng: "range A \<subseteq> ?\<xi>''" and A_ni: "non_increasing A"
+              hence "range A \<subseteq> Mono \<Omega> M \<and> non_increasing A"
+                by auto
+              hence "\<Inter> (range A) \<in> Mono \<Omega> M" 
+                using mono_mono 
+                unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                by auto 
+              moreover have "\<forall>T\<in>Mono \<Omega> M. \<Inter> (range A) \<union> T \<in> Mono \<Omega> M"  
+              proof 
+                fix T
+                let ?B = "(\<lambda>n. A n \<union> T)"
+                assume "T \<in> Mono \<Omega> M"
+                hence "\<forall>n. ?B n \<in> Mono \<Omega> M"
+                  using A_rng by blast 
+                moreover have "non_increasing ?B"
+                  using A_ni unfolding non_increasing_def by blast
+                ultimately have "\<Inter> (range ?B) \<in> Mono \<Omega> M" 
+                  using mono_mono 
+                  unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                  by auto 
+                thus "\<Inter> (range A) \<union> T \<in> Mono \<Omega> M" 
+                  by auto 
+              qed
+              ultimately show "\<Inter> (range A) \<in> ?\<xi>''"
+                by simp
+            qed
+            thus "non_increasing_inter_closed ?\<xi>''"
+              using ne_xi'' unfolding non_increasing_inter_closed_def by auto 
+          qed
+  
+        ultimately show "Mono \<Omega> M = ?\<xi>''" 
+          using Mono_def by blast 
       qed 
 
-      moreover have "M \<subseteq> ?\<xi>"
-        by (smt (verit) Ball_Collect M_subseq algebra_iff_Un assms subset_iff) 
-
-      ultimately have "?\<xi> = Mono \<Omega> M"
-        unfolding Mono_def by blast 
-      hence "\<forall>S\<in>M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M"
-        by (metis (no_types, lifting) mem_Collect_eq sup_commute)
-      hence "M \<subseteq> ?\<xi>'"
-        using M_subseq by blast 
-
-      moreover have "monotone_class \<Omega> ?\<xi>'" 
-        unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
-      proof (rule ; rule)
-        fix x
-        assume "x \<in> ?\<xi>'"
-        thus "x \<in> Pow \<Omega>"
-          using mono_Pow by auto 
-      next 
-        show "non_decreasing_union_closed ?\<xi>'" sorry 
-      next 
-        show "non_increasing_inter_closed ?\<xi>'" sorry
+      moreover have "Mono \<Omega> M = ?\<xi>'"
+      proof 
+        have "?\<xi>' \<subseteq> Pow \<Omega>"
+          using mono_Pow by auto  
+        moreover have "\<forall>A. range A \<subseteq> ?\<xi>' \<and> non_decreasing A \<longrightarrow> \<Union> (range A) \<in> ?\<xi>'"
+        proof (rule ; rule ; erule conjE)
+          fix A :: "nat \<Rightarrow> 'a set"
+          assume A_rng: "range A \<subseteq> ?\<xi>'" and A_nd: "non_decreasing A"
+          hence "range A \<subseteq> Mono \<Omega> M \<and> non_decreasing A"
+            by auto
+          hence "\<Union> (range A) \<in> Mono \<Omega> M" 
+            using mono_mono 
+            unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+             by simp 
+          moreover have "\<Omega> - \<Union> (range A) \<in> Mono \<Omega> M" 
+          proof - 
+            let ?B = "(\<lambda>n. \<Omega> - A n)"
+            have "range ?B \<subseteq> Mono \<Omega> M"
+              using A_rng by blast
+            moreover have "non_increasing ?B"
+              by (simp add: A_nd nd_complement_ni) 
+            moreover have "\<Omega> - \<Union> (range A) = \<Inter> (range ?B)" 
+              by simp 
+            ultimately show ?thesis
+              using mono_mono 
+              unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+              by metis 
+          qed
+          ultimately show "\<Union> (range A) \<in> ?\<xi>'"
+            by simp 
+        qed 
+        moreover have "\<forall>A. range A \<subseteq> ?\<xi>' \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> ?\<xi>'"
+        proof (rule ; rule ; erule conjE)
+          fix A :: "nat \<Rightarrow> 'a set"
+          assume A_rng: "range A \<subseteq> ?\<xi>'" and A_ni: "non_increasing A"
+          hence "range A \<subseteq> Mono \<Omega> M \<and> non_increasing A"
+            by auto
+          hence "\<Inter> (range A) \<in> Mono \<Omega> M" 
+            using mono_mono 
+            unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+             by simp 
+          moreover have "\<Omega> - \<Inter> (range A) \<in> Mono \<Omega> M" 
+          proof - 
+            let ?B = "(\<lambda>n. \<Omega> - A n)"
+            have "range ?B \<subseteq> Mono \<Omega> M"
+              using A_rng by blast
+            moreover have "non_decreasing ?B"
+              by (simp add: A_ni ni_complement_nd) 
+            moreover have "\<Omega> - \<Inter> (range A) = \<Union> (range ?B)" 
+              by simp 
+            ultimately show ?thesis
+              using mono_mono 
+              unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+              by metis 
+          qed
+          ultimately show "\<Inter> (range A) \<in> ?\<xi>'"
+            by simp 
+        qed
+        moreover have "?\<xi>' \<noteq> {}"
+          using M_subseq algebra.compl_sets algebra.top assms by blast
+        ultimately have "monotone_class \<Omega> ?\<xi>'"
+          using monotone_classI non_decreasing_union_closed_def non_increasing_inter_closed_def
+          by (metis (no_types, lifting)) 
+        moreover have "M \<subseteq> ?\<xi>'"
+          using M_subseq algebra.compl_sets assms by auto 
+        ultimately show "Mono \<Omega> M \<subseteq> ?\<xi>'" 
+          unfolding Mono_def by blast 
+      next  
+        show "?\<xi>' \<subseteq> Mono \<Omega> M" by auto 
       qed 
 
-      ultimately have "Mono \<Omega> M = ?\<xi>'" 
-        unfolding Mono_def by blast 
-      thus "\<forall>S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. S \<union> T \<in> Mono \<Omega> M"
-        by auto  
-    qed 
+      ultimately show ?thesis
+        by blast  
+    qed
 
     ultimately show ?thesis
-      by (simp add: algebra_omega_c_fu_closed) 
+      using algebra_omega_c_fu_closed complement_closed_def finite_union_closed_def
+      by (metis Collect_empty_eq Collect_mem_eq) 
   qed
 
   ultimately have "sigma_algebra \<Omega> (Mono \<Omega> M)"
