@@ -1398,6 +1398,18 @@ locale monotone_class = subset_class +
   assumes ndu_stable: "non_decreasing_union_stable M"
       and ncdi_stable: "non_increasing_inter_stable M"
 
+lemma monotone_classI:
+  assumes "M \<subseteq> Pow \<Omega>"
+      and "non_decreasing_union_stable M"
+      and "non_increasing_inter_stable M"
+    shows "monotone_class \<Omega> M"
+  by (simp add: assms monotone_class_axioms.intro monotone_class_def subset_class.intro)
+
+lemma monotone_class_trivial:
+  shows "monotone_class A (Pow A)"
+  by (meson cu_imp_ndu_stable monotone_classI ndu_c_imp_nii_stable sigma_algebra_Pow 
+      sigma_algebra_omega_c_cu_stable)
+
 locale pi_system = subset_class + 
   assumes fi_stable: "finite_inter_stable M"
 
@@ -2025,21 +2037,8 @@ definition generates_dynkin_system :: "'a set set \<Rightarrow> 'a set \<Rightar
 
 subsubsection "Least Monotone classes"
 
-(* TODO : Move monotone_class convenience lemmas into different subsection *)
-
 definition Mono :: "'a set \<Rightarrow> 'a set set \<Rightarrow> 'a set set" where
   "Mono \<Omega> M =  (\<Inter>{N. monotone_class \<Omega> N \<and> M \<subseteq> N})"
-
-lemma monotone_classI:
-  assumes "M \<subseteq> Pow \<Omega>"
-      and "non_decreasing_union_stable M"
-      and "non_increasing_inter_stable M"
-    shows "monotone_class \<Omega> M"
-  by (simp add: assms monotone_class_axioms.intro monotone_class_def subset_class.intro)
-
-lemma monotone_class_trivial:
-  shows "monotone_class A (Pow A)"
-  by (simp add: sigma_algebra_Pow sigma_is_mono)
 
 lemma monotone_class_Mono:
   assumes M_Pow: "M \<subseteq> Pow (\<Omega>)"
@@ -2460,16 +2459,82 @@ next
   text "For the converse, we must show that \<D>(M) is a \<pi>-system."
   have "pi_system \<Omega> (Dynkin \<Omega> M)"
   proof - 
-    text "In order to achieve this, let \<D>\<^sub>T = {S\<subseteq>\<Omega> : S \<inter> T \<in> Dynkin \<Omega> M} and show that this is a 
+    text "In order to achieve this, let \<D> T = {S\<subseteq>\<Omega> : S \<inter> T \<in> Dynkin \<Omega> M} and show that this is a 
           Dynkin system."
+    have Dynkin_dynk: "Dynkin_system \<Omega> (Dynkin \<Omega> M)"
+      by (meson Dynkin_system_Dynkin pi pi_system.axioms(1) subset_class_def)
+    hence Dynkin_Pow: "(Dynkin \<Omega> M) \<subseteq> Pow \<Omega>" 
+      using Dynkin_omega_c_disju_stable by auto 
+
     let ?\<D> = "(\<lambda>T. {S. S \<subseteq> \<Omega> \<and> S \<inter> T \<in> Dynkin \<Omega> M})"
     have \<D>_Dynkin: "\<forall>T\<in>Dynkin \<Omega> M. Dynkin_system \<Omega> (?\<D> T)"
     proof 
+      text "Let T \<in> \<D>(M)."
       fix T
-      assume "T \<in> Dynkin \<Omega> M"
-      thus "Dynkin_system \<Omega> (?\<D> T)" sorry 
+      assume T_in_dynk: "T \<in> Dynkin \<Omega> M"
+      text "Since \<Omega> \<inter> T = T, it follows that \<Omega> \<in> \<D> T."
+      moreover have inter_is_T: "\<Omega> \<inter> T = T"
+        using calculation Dynkin_Pow by auto
+      ultimately have "\<Omega> \<in> ?\<D> T"
+        by auto  
+
+      text "If S \<in> \<D> T, then (\<Omega> - S) \<inter> T = (\<Omega> \<inter> T) - (S \<inter> T)."
+      moreover have "complement_stable \<Omega> (?\<D> T)"
+        unfolding complement_stable_def 
+      proof (rule ; rule) 
+        show "?\<D> T = {} \<Longrightarrow> False"
+          using calculation by auto
+      next 
+        fix S
+        assume "S \<in> ?\<D> T"
+        hence "T - (S \<inter> T) \<in> Dynkin \<Omega> M"
+          using Dynkin_system.diff T_in_dynk Dynkin_dynk by auto 
+        hence "(\<Omega> \<inter> T) - (S \<inter> T) \<in> Dynkin \<Omega> M"
+          using inter_is_T by auto
+        moreover have "(\<Omega> - S) \<inter> T = (\<Omega> \<inter> T) - (S \<inter> T)"
+          by auto 
+        ultimately show "\<Omega> - S \<in> ?\<D> T" 
+          by auto 
+      qed
+
+      text "If {B n, n \<ge> 1} are disjoint sets in \<D> T, then (\<Inter>n. B n) \<inter> T = (\<Inter>n. B n \<inter> T)."
+      moreover have "disj_countable_union_stable (?\<D> T)" 
+        unfolding disj_countable_union_stable_def
+      proof (rule ; rule) 
+        show "(?\<D> T) = {} \<Longrightarrow> False"
+          using calculation(1) by auto
+      next 
+        fix A :: "nat \<Rightarrow> 'a set"
+        show "range A \<subseteq> ?\<D> T \<and> disjoint_family A \<longrightarrow> \<Union> (range A) \<in> ?\<D> T"
+        proof (rule ; rule ; erule conjE)
+          assume A_rng: "range A \<subseteq> ?\<D> T" and A_disj: "disjoint_family A"
+          hence "\<Union> (range A) \<subseteq> \<Omega>" 
+            by auto 
+          moreover have "\<Union> (range A) \<inter> T \<in> Dynkin \<Omega> M"
+          proof - 
+            let ?B = "(\<lambda>n. A n \<inter> T)"
+            have "range ?B \<subseteq> Dynkin \<Omega> M"
+              using A_rng by blast 
+            moreover have "disjoint_family ?B"
+              using A_disj unfolding disjoint_family_on_def by auto 
+            moreover have "disj_countable_union_stable (Dynkin \<Omega> M)"
+              using Dynkin_dynk Dynkin_omega_c_disju_stable by auto
+            ultimately have "\<Union> (range ?B) \<in> Dynkin \<Omega> M"
+              unfolding disj_countable_union_stable_def by blast 
+            moreover have "\<Union> (range A) \<inter> T = \<Union> (range ?B)" 
+              by auto 
+            ultimately show "\<Union> (range A) \<inter> T \<in> Dynkin \<Omega> M"
+              by presburger 
+          qed
+          ultimately show "\<Union> (range A) \<subseteq> \<Omega> \<and> \<Union> (range A) \<inter> T \<in> Dynkin \<Omega> M"
+            by auto
+        qed
+      qed
+
+      ultimately show "Dynkin_system \<Omega> (?\<D> T)"
+        using Dynkin_omega_c_disju_stable by blast 
     qed
-    text "Since, by definition, M \<subseteq> \<D>\<^sub>S for every S \<in> M, it follows that Dynkin \<Omega> M \<subseteq> \<D>\<^sub>S \<forall>S\<in>M."
+    text "Since, by definition, M \<subseteq> \<D> S for every S \<in> M, it follows that Dynkin \<Omega> M \<subseteq> \<D> S \<forall>S\<in>M."
     (* Because D_S is a Dynkin system containing all of M and Dynkin \<Omega> M is the smallest such coll. *)
     moreover have M_in_\<D>: "\<forall>S\<in>M. M \<subseteq> ?\<D> S"
       using pi pi_system.axioms(1) subset_class.sets_into_space 
@@ -2477,7 +2542,7 @@ next
     ultimately have "\<forall>S\<in>M. Dynkin \<Omega> M \<subseteq> ?\<D> S"
       by (simp add: Dynkin_Basic Dynkin_system.Dynkin_subset)
 
-    text "For T\<in>\<D>(M), we now have T\<inter>S \<in> \<D>(M) \<forall>S\<in>M, which implies that M \<subseteq> \<D>\<^sub>T and, hence, that
+    text "For T\<in>\<D>(M), we now have T\<inter>S \<in> \<D>(M) \<forall>S\<in>M, which implies that M \<subseteq> \<D> T and, hence, that
           \<D>(M) \<subseteq> \<D>(T) \<forall>T\<in>\<D>(M)."
     hence "\<forall>T\<in>Dynkin \<Omega> M. \<forall>S\<in>M. T \<inter> S \<in> Dynkin \<Omega> M"
       by auto
@@ -2491,12 +2556,8 @@ next
       using M_in_\<D> finite_inter_stable_def pi pi_system.fi_stable by fastforce
     ultimately have "finite_inter_stable (Dynkin \<Omega> M)"
       unfolding finite_inter_stable_def by auto 
-    moreover have "Dynkin_system \<Omega> (Dynkin \<Omega> M)"
-      by (meson Dynkin_system_Dynkin pi pi_system.axioms(1) subset_class_def)
-    hence "(Dynkin \<Omega> M) \<subseteq> Pow \<Omega>" 
-      using Dynkin_omega_c_disju_stable by auto 
-    ultimately show "pi_system \<Omega> (Dynkin \<Omega> M)"
-      by (simp add: pi_systemI) 
+    thus "pi_system \<Omega> (Dynkin \<Omega> M)"
+      by (simp add: pi_systemI Dynkin_Pow) 
   qed
   moreover have "Dynkin_system \<Omega> (Dynkin \<Omega> M)"
     by (meson Dynkin_system_Dynkin pi pi_system_def subset_class_def)
@@ -2522,6 +2583,36 @@ proof -
     by simp 
 qed
 
+section "Two Metatheorems"
 
+theorem alg_mono_theorem:
+  assumes mono: "monotone_class \<Omega> M"
+      and P_on_M: "\<forall>S\<in>M. P S"
+      and alg: "algebra \<Omega> N"
+      and subseq: "N \<subseteq> M"
+    shows "\<forall>S\<in>sigma_sets \<Omega> N. P S"
+proof - 
+  have "sigma_sets \<Omega> N \<subseteq> M"
+    using alg mono sigma_of_algebra_in_mono subseq by blast
+  thus ?thesis
+    using P_on_M by fast 
+qed
+
+theorem pi_lambda_theorem: 
+  assumes dynk: "Dynkin_system \<Omega> M"
+      and P_on_M: "\<forall>S\<in>M. P S"
+      and pi: "pi_system \<Omega> N"
+      and subseq: "N \<subseteq> M"
+    shows "\<forall>S\<in>sigma_sets \<Omega> N. P S"
+proof - 
+  have "sigma_sets \<Omega> N = Dynkin \<Omega> N"
+    using monotone_class_theorem pi by auto
+  hence "sigma_sets \<Omega> N \<subseteq> M"
+    by (simp add: Dynkin_system.Dynkin_subset dynk subseq)
+  thus ?thesis 
+    using P_on_M by fast 
+qed 
+
+chapter "The Probability Space"
 
 end
