@@ -2615,4 +2615,17 @@ qed
 
 chapter "The Probability Space"
 
+(* TODO: P shouldn't be to reals because we need a proper notion of
+   undefinedness. *)
+locale probability_space = 
+    fixes \<Omega> :: "'a set"
+      and \<F> :: "'a set set"
+      and P :: "'a set \<Rightarrow> real"
+  assumes \<F>_Pow: "\<F> \<subseteq> Pow \<Omega>"
+      and sigma: "sigma_algebra \<Omega> \<F>"
+      and non_neg_prob: "\<forall>A\<in>\<F>. P A \<ge> 0"
+      and sample_space_prob_1: "P \<Omega> = 1"
+      and countable_additivity: "disjoint_family (A :: nat \<Rightarrow> 'a set) \<and> range A \<subseteq> \<F> \<longrightarrow> 
+                                 P (\<Union>(range A)) = infsum P (UNIV :: nat set)"
+
 end
