@@ -468,9 +468,9 @@ section "Collections of Sets"
 
 subsection "Rules for Collections of Sets"
 
-text "Set collections are commonly selected according to whether they are closed under certain 
+text "Set collections are commonly selected according to whether they are stable under certain 
 operations.  
-A collection of sets may, for instance, be closed under 
+A collection of sets may, for instance, be stable under 
 (i) The complement.
 (ii) Finite unions.
 (iii) Finite intersections.
@@ -483,7 +483,7 @@ Note: We defined (ii) and (iii) with just a normal binary union / intersection. 
 (iv) Set differences with respect to ones subset, provided that it's also in the collection 
 
 Note: If the subsets we want to be able to remove weren't required to be in the collection, this
-      condition would just mean 'closed under taking subsets'. 
+      condition would just mean 'stable under taking subsets'. 
 
 (v) Countable unions.
 (vi) Countable union of a family of sets as long as it is disjoint. 
@@ -496,7 +496,7 @@ Note: This does not hold for finite, disjoint unions unless {} is in the set. On
 
 Note: Yes, (i), (v) and (i), (vii) are also equivalent by deMorgan.
 
-Note: If a set is closed under countable un./in., it is of course so under finite ones as well.
+Note: If a set is stable under countable un./in., it is of course so under finite ones as well.
 
 (viii) The (countable) union (limit!) of non-decreasing sequences of sets.
 (ix) The (countable) intersection (limit!) of non-increasing sequences of sets. 
@@ -504,19 +504,19 @@ Note: If a set is closed under countable un./in., it is of course so under finit
 
 subsubsection "Complements, finite unions and intersections"
 
-definition complement_closed :: "'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
-  where "complement_closed \<Omega> M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
+definition complement_stable :: "'a set \<Rightarrow> 'a set set \<Rightarrow> bool"
+  where "complement_stable \<Omega> M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<Omega> - S \<in> M))"
 
-definition finite_union_closed :: "'a set set \<Rightarrow> bool"
-  where "finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M))"
+definition finite_union_stable :: "'a set set \<Rightarrow> bool"
+  where "finite_union_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M))"
 
-lemma fu_closed_finite: 
-  assumes fu_closed: "finite_union_closed M"
+lemma fu_stable_finite: 
+  assumes fu_stable: "finite_union_stable M"
       and family_in: "\<forall>i\<in>I. A i \<in> M"
       and finite: "finite I"
       and non_empty: "I \<noteq> {}"
     shows "(\<Union>i\<in>I. A i) \<in> M"
-  using finite non_empty family_in fu_closed
+  using finite non_empty family_in fu_stable
 proof (induction I rule: finite_induct)
   case empty
   then show ?case
@@ -533,27 +533,27 @@ next
   next
     case False
     hence "(\<Union>i\<in>F. A i) \<in> M"
-      by (simp add: fu_closed insert.IH insert.prems(2)) 
+      by (simp add: fu_stable insert.IH insert.prems(2)) 
     moreover have "A x \<in> M"
       by (simp add: insert.prems(2))
     moreover have "\<Union> (A ` insert x F) = (\<Union>i\<in>F. A i) \<union> (A x)"
       by auto 
     ultimately show "\<Union> (A ` insert x F) \<in> M"
-      by (metis finite_union_closed_def fu_closed) 
+      by (metis finite_union_stable_def fu_stable) 
   qed
 qed 
     
 
-definition finite_inter_closed :: "'a set set \<Rightarrow> bool"
-  where "finite_inter_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M))"
+definition finite_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "finite_inter_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M))"
 
-lemma fi_closed_finite: 
-  assumes fi_closed: "finite_inter_closed M"
+lemma fi_stable_finite: 
+  assumes fi_stable: "finite_inter_stable M"
       and family_in: "\<forall>i\<in>I. A i \<in> M"
       and finite: "finite I"
       and non_empty: "I \<noteq> {}"
     shows "(\<Inter>i\<in>I. A i) \<in> M"
-  using finite non_empty family_in fi_closed
+  using finite non_empty family_in fi_stable
 proof (induction I rule: finite_induct)
   case empty
   then show ?case
@@ -570,24 +570,24 @@ next
   next
     case False
     hence "(\<Inter>i\<in>F. A i) \<in> M"
-      by (simp add: fi_closed insert.IH insert.prems(2)) 
+      by (simp add: fi_stable insert.IH insert.prems(2)) 
     moreover have "A x \<in> M"
       by (simp add: insert.prems(2))
     moreover have "\<Inter> (A ` insert x F) = (\<Inter>i\<in>F. A i) \<inter> (A x)"
       by auto 
     ultimately show "\<Inter> (A ` insert x F) \<in> M"
-      by (metis finite_inter_closed_def fi_closed) 
+      by (metis finite_inter_stable_def fi_stable) 
   qed
 qed 
 
-lemma c_fu_imp_fi_closed: 
-  assumes c_closed: "complement_closed \<Omega> M"
-      and fu_closed: "finite_union_closed M" 
+lemma c_fu_imp_fi_stable: 
+  assumes c_stable: "complement_stable \<Omega> M"
+      and fu_stable: "finite_union_stable M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "finite_inter_closed M"
+    shows "finite_inter_stable M"
 proof - 
   have "M \<noteq> {}"
-    using c_closed complement_closed_def by auto 
+    using c_stable complement_stable_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M" 
   proof 
@@ -598,15 +598,15 @@ proof -
       fix T
       assume "T\<in>M"
       hence "\<Omega>-T \<in> M"
-        using c_closed complement_closed_def by fast
+        using c_stable complement_stable_def by fast
       moreover have "\<Omega>-S \<in> M"
-        using S_in c_closed complement_closed_def by fast
+        using S_in c_stable complement_stable_def by fast
       ultimately have "(\<Omega>-S) \<union> (\<Omega>-T) \<in> M"
-        using fu_closed finite_union_closed_def by fast 
+        using fu_stable finite_union_stable_def by fast 
       hence "\<Omega> - (S \<inter> T) \<in> M"
         by (simp add: Diff_Int)
       hence "\<Omega> - (\<Omega> - (S \<inter> T)) \<in> M"
-        using c_closed complement_closed_def by fast
+        using c_stable complement_stable_def by fast
       moreover have "\<Omega> - (\<Omega> - (S \<inter> T)) = S \<inter> T"
         using S_in subseq by auto 
       ultimately show "S \<inter> T \<in> M" 
@@ -615,17 +615,17 @@ proof -
   qed 
     
   ultimately show ?thesis 
-    by (simp add: finite_inter_closed_def) 
+    by (simp add: finite_inter_stable_def) 
 qed 
 
-lemma c_fi_imp_fu_closed: 
-  assumes c_closed: "complement_closed \<Omega> M"
-      and fi_closed: "finite_inter_closed M" 
+lemma c_fi_imp_fu_stable: 
+  assumes c_stable: "complement_stable \<Omega> M"
+      and fi_stable: "finite_inter_stable M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "finite_union_closed M"
+    shows "finite_union_stable M"
 proof - 
   have "M \<noteq> {}"
-    using c_closed complement_closed_def by auto 
+    using c_stable complement_stable_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M" 
   proof 
@@ -636,15 +636,15 @@ proof -
       fix T
       assume T_in: "T\<in>M"
       hence "\<Omega>-T \<in> M"
-        using c_closed complement_closed_def by fast
+        using c_stable complement_stable_def by fast
       moreover have "\<Omega>-S \<in> M"
-        using S_in c_closed complement_closed_def by fast
+        using S_in c_stable complement_stable_def by fast
       ultimately have "(\<Omega>-S) \<inter> (\<Omega>-T) \<in> M"
-        using fi_closed finite_inter_closed_def by fast 
+        using fi_stable finite_inter_stable_def by fast 
       hence "\<Omega> - (S \<union> T) \<in> M"
         by (simp add: Diff_Un)
       hence "\<Omega> - (\<Omega> - (S \<union> T)) \<in> M"
-        using c_closed complement_closed_def by fast
+        using c_stable complement_stable_def by fast
       moreover have "\<Omega> - (\<Omega> - (S \<union> T)) = S \<union> T"
         using S_in T_in subseq by auto 
       ultimately show "S \<union> T \<in> M" 
@@ -653,34 +653,34 @@ proof -
   qed 
     
   ultimately show ?thesis 
-    by (simp add: finite_union_closed_def) 
+    by (simp add: finite_union_stable_def) 
 qed
 
 subsubsection "Set Difference"
 
-definition set_diff_closed :: "'a set set \<Rightarrow> bool"
-  where "set_diff_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)))"
+definition set_diff_stable :: "'a set set \<Rightarrow> bool"
+  where "set_diff_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)))"
 
-lemma sd_omega_imp_c_closed: 
-  assumes sd_closed: "set_diff_closed M"
+lemma sd_omega_imp_c_stable: 
+  assumes sd_stable: "set_diff_stable M"
       and omega: "\<Omega> \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "complement_closed \<Omega> M"
+    shows "complement_stable \<Omega> M"
 proof - 
   have "M \<noteq> {}"
     using omega by auto
   moreover have "\<forall>S\<in>M. \<Omega> - S \<in> M"
-    by (meson M_pow PowD in_mono omega sd_closed set_diff_closed_def)
+    by (meson M_pow PowD in_mono omega sd_stable set_diff_stable_def)
   ultimately show ?thesis
-    by (simp add: complement_closed_def) 
+    by (simp add: complement_stable_def) 
 qed
 
-lemma c_fu_omega_imp_sd_closed:
-  assumes c_closed: "complement_closed \<Omega> M" 
-      and fu_closed: "finite_union_closed M"
+lemma c_fu_omega_imp_sd_stable:
+  assumes c_stable: "complement_stable \<Omega> M" 
+      and fu_stable: "finite_union_stable M"
       and omega: "\<Omega> \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "set_diff_closed M"
+    shows "set_diff_stable M"
 proof - 
   have "M \<noteq> {}"
     using omega by auto
@@ -691,28 +691,28 @@ proof -
     hence "S - T = \<Omega> - ((\<Omega> - S) \<union> T)"
       using M_pow by auto
     moreover have "\<Omega> - S \<in> M"
-      using S_M c_closed complement_closed_def by blast
+      using S_M c_stable complement_stable_def by blast
     hence "(\<Omega> - S) \<union> T \<in> M"
-      using T_M fu_closed unfolding finite_union_closed_def by simp 
+      using T_M fu_stable unfolding finite_union_stable_def by simp 
     ultimately show "S - T \<in> M"  
-      using c_closed M_pow unfolding complement_closed_def by simp 
+      using c_stable M_pow unfolding complement_stable_def by simp 
   qed 
   ultimately show ?thesis 
-    unfolding set_diff_closed_def by auto 
+    unfolding set_diff_stable_def by auto 
 qed
   
 
 subsubsection "Countable unions and intersections"
 
-definition countable_union_closed :: "'a set set \<Rightarrow> bool"
-  where "countable_union_closed M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
+definition countable_union_stable :: "'a set set \<Rightarrow> bool"
+  where "countable_union_stable M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
 
-lemma cu_imp_fu_closed: 
-  assumes cu_closed: "countable_union_closed M"
-  shows "finite_union_closed M"
+lemma cu_imp_fu_stable: 
+  assumes cu_stable: "countable_union_stable M"
+  shows "finite_union_stable M"
 proof - 
   have "M \<noteq> {}" 
-    using cu_closed countable_union_closed_def by auto 
+    using cu_stable countable_union_stable_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<union> T \<in> M" 
   proof 
@@ -727,7 +727,7 @@ proof -
       hence "range ?A \<subseteq> M"
         using S_in by auto 
       hence "?U \<in> M"
-        using cu_closed countable_union_closed_def by metis
+        using cu_stable countable_union_stable_def by metis
       moreover have "?U = S \<union> T" 
       proof 
         show "?U \<subseteq> S \<union> T"
@@ -761,18 +761,18 @@ proof -
   qed
 
   ultimately show ?thesis 
-    using finite_union_closed_def by auto 
+    using finite_union_stable_def by auto 
 qed
 
-definition countable_inter_closed :: "'a set set \<Rightarrow> bool"
-  where "countable_inter_closed M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
+definition countable_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "countable_inter_stable M = ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
 
-lemma ci_imp_fi_closed: 
-  assumes ci_closed: "countable_inter_closed M"
-  shows "finite_inter_closed M"
+lemma ci_imp_fi_stable: 
+  assumes ci_stable: "countable_inter_stable M"
+  shows "finite_inter_stable M"
 proof - 
   have "M \<noteq> {}" 
-    using ci_closed countable_inter_closed_def by auto 
+    using ci_stable countable_inter_stable_def by auto 
 
   moreover have "\<forall>S\<in>M.\<forall>T\<in>M. S \<inter> T \<in> M" 
   proof 
@@ -787,7 +787,7 @@ proof -
       hence "range ?A \<subseteq> M"
         using S_in by auto 
       hence "?U \<in> M"
-        using ci_closed countable_inter_closed_def by metis
+        using ci_stable countable_inter_stable_def by metis
       moreover have "?U = S \<inter> T" 
       proof 
         show "?U \<subseteq> S \<inter> T"
@@ -811,28 +811,28 @@ proof -
   qed
 
   ultimately show ?thesis 
-    using finite_inter_closed_def by auto 
+    using finite_inter_stable_def by auto 
 qed
 
-lemma c_cu_imp_ci_closed: 
-  assumes c_closed: "complement_closed \<Omega> M"
-      and cu_closed: "countable_union_closed M" 
+lemma c_cu_imp_ci_stable: 
+  assumes c_stable: "complement_stable \<Omega> M"
+      and cu_stable: "countable_union_stable M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "countable_inter_closed M"
+    shows "countable_inter_stable M"
 proof - 
   have "M \<noteq> {}"
-    using c_closed complement_closed_def by auto 
+    using c_stable complement_stable_def by auto 
 
   moreover have "\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)" 
   proof (rule allI; rule impI)
     fix A :: "nat \<Rightarrow> 'a set"
     assume seq_in: "range A \<subseteq> M"
     hence "range (\<lambda>n. \<Omega> - A n) \<subseteq> M"
-      using c_closed complement_closed_def by auto
+      using c_stable complement_stable_def by auto
     hence "(\<Union>i::nat. \<Omega> - A i) \<in> M"
-      using countable_union_closed_def cu_closed by metis
+      using countable_union_stable_def cu_stable by metis
     hence "\<Omega> - (\<Union>i::nat. \<Omega> - A i) \<in> M" 
-      using c_closed complement_closed_def by auto
+      using c_stable complement_stable_def by auto
 
     moreover have "\<forall>i. A i \<subseteq> \<Omega>"
       using seq_in subseq by auto 
@@ -844,28 +844,28 @@ proof -
   qed 
     
   ultimately show ?thesis
-    by (simp add: countable_inter_closed_def) 
+    by (simp add: countable_inter_stable_def) 
 qed 
 
-lemma c_ci_imp_cu_closed: 
-  assumes c_closed: "complement_closed \<Omega> M"
-      and ci_closed: "countable_inter_closed M" 
+lemma c_ci_imp_cu_stable: 
+  assumes c_stable: "complement_stable \<Omega> M"
+      and ci_stable: "countable_inter_stable M" 
       and subseq: "\<forall>S\<in>M. S \<subseteq> \<Omega>"
-    shows "countable_union_closed M"
+    shows "countable_union_stable M"
 proof - 
   have "M \<noteq> {}"
-    using c_closed complement_closed_def by auto 
+    using c_stable complement_stable_def by auto 
 
   moreover have "\<forall>A. (range A \<subseteq> M) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)" 
   proof (rule allI; rule impI)
     fix A :: "nat \<Rightarrow> 'a set"
     assume seq_in: "range A \<subseteq> M"
     hence "range (\<lambda>n. \<Omega> - A n) \<subseteq> M"
-      using c_closed complement_closed_def by auto
+      using c_stable complement_stable_def by auto
     hence "(\<Inter>i::nat. \<Omega> - A i) \<in> M"
-      using countable_inter_closed_def ci_closed by metis
+      using countable_inter_stable_def ci_stable by metis
     hence "\<Omega> - (\<Inter>i::nat. \<Omega> - A i) \<in> M" 
-      using c_closed complement_closed_def by auto
+      using c_stable complement_stable_def by auto
 
     moreover have "\<forall>i. A i \<subseteq> \<Omega>"
       using seq_in subseq by auto 
@@ -877,28 +877,28 @@ proof -
   qed 
     
   ultimately show ?thesis
-    by (simp add: countable_union_closed_def) 
+    by (simp add: countable_union_stable_def) 
 qed 
 
 subsubsection "Disjoint unions"
 
-definition disj_countable_union_closed :: "'a set set \<Rightarrow> bool"
-  where "disj_countable_union_closed M = 
+definition disj_countable_union_stable :: "'a set set \<Rightarrow> bool"
+  where "disj_countable_union_stable M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> disjoint_family A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
 
 
-definition disj_finite_union_closed :: "'a set set \<Rightarrow> bool"
-  where "disj_finite_union_closed M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
+definition disj_finite_union_stable :: "'a set set \<Rightarrow> bool"
+  where "disj_finite_union_stable M = ((M \<noteq> {}) \<and> (\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)))"
 
 (* TODO - Could show by induction that this suffices for unions of disjoint families of size n *)
   
-lemma dcu_imp_dfu_closed:
-  assumes dcu_closed: "disj_countable_union_closed M"
+lemma dcu_imp_dfu_stable:
+  assumes dcu_stable: "disj_countable_union_stable M"
       and empty_in: "{} \<in> M"
-  shows "disj_finite_union_closed M"
+  shows "disj_finite_union_stable M"
 proof -
   have "M \<noteq> {}" 
-    using dcu_closed unfolding disj_countable_union_closed_def by fast 
+    using dcu_stable unfolding disj_countable_union_stable_def by fast 
 
   moreover have "\<forall>S\<in>M. \<forall>T\<in>M. (S \<inter> T = {}) \<longrightarrow> (S \<union> T \<in> M)" 
   proof 
@@ -920,7 +920,7 @@ proof -
         moreover have "disjoint_family ?A"
           by (simp add: Int_commute disj disjoint_family_on_def) 
         ultimately have"?U \<in> M"
-          using dcu_closed disj unfolding disj_countable_union_closed_def by blast  
+          using dcu_stable disj unfolding disj_countable_union_stable_def by blast  
         moreover have "?U = S \<union> T" 
         proof 
           show "?U \<subseteq> S \<union> T"
@@ -955,23 +955,23 @@ proof -
     qed
   qed
   ultimately show ?thesis
-    by (simp add: disj_finite_union_closed_def)
+    by (simp add: disj_finite_union_stable_def)
 qed
 
 
 
-lemma dcu_c_empty_imp_sd_closed: 
-  assumes dcu_closed: "disj_countable_union_closed M"
-      and c_closed: "complement_closed \<Omega> M"
+lemma dcu_c_empty_imp_sd_stable: 
+  assumes dcu_stable: "disj_countable_union_stable M"
+      and c_stable: "complement_stable \<Omega> M"
       and empty_in: "{} \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "set_diff_closed M"
+    shows "set_diff_stable M"
 proof -  
-  have dfu_closed: "disj_finite_union_closed M"
-    by (simp add: dcu_imp_dfu_closed assms)
+  have dfu_stable: "disj_finite_union_stable M"
+    by (simp add: dcu_imp_dfu_stable assms)
 
   have "M \<noteq> {}" 
-    using c_closed complement_closed_def by auto 
+    using c_stable complement_stable_def by auto 
   moreover have " \<forall>S\<in>M.\<forall>T\<in>M. (T \<subseteq> S) \<longrightarrow> (S - T \<in> M)" 
   proof 
     fix S
@@ -984,13 +984,13 @@ proof -
       proof 
         assume T_in_set: "T \<subseteq> S"
         have "\<Omega> - S \<in> M"
-          using c_closed unfolding complement_closed_def using S_in by auto
+          using c_stable unfolding complement_stable_def using S_in by auto
         moreover have "T \<inter> (\<Omega> - S) = {}"
           using T_in_set by auto
         ultimately have "T \<union> (\<Omega> - S) \<in> M"  
-          using dfu_closed unfolding disj_finite_union_closed_def using S_in T_in_collection by simp
+          using dfu_stable unfolding disj_finite_union_stable_def using S_in T_in_collection by simp
         hence "\<Omega> - (T \<union> (\<Omega> - S)) \<in> M"
-          using c_closed complement_closed_def by blast
+          using c_stable complement_stable_def by blast
         moreover have "\<Omega> - (T \<union> (\<Omega> - S)) = S - T"
           using Diff_Diff_Int M_pow S_in by auto 
         ultimately show "S - T \<in> M"
@@ -999,26 +999,26 @@ proof -
     qed
   qed
   ultimately show ?thesis
-    by (simp add: set_diff_closed_def)
+    by (simp add: set_diff_stable_def)
 qed
 
 subsubsection "Monotonic sequences"
 
-definition non_decreasing_union_closed :: "'a set set \<Rightarrow> bool"
-  where "non_decreasing_union_closed M = 
+definition non_decreasing_union_stable :: "'a set set \<Rightarrow> bool"
+  where "non_decreasing_union_stable M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> non_decreasing A) \<longrightarrow> ((\<Union>i::nat. A i) \<in> M)))"
 
-lemma cu_imp_ndu_closed:
-  assumes cu_closed: "countable_union_closed M"
-  shows "non_decreasing_union_closed M"
-  using cu_closed unfolding countable_union_closed_def non_decreasing_union_closed_def by simp
+lemma cu_imp_ndu_stable:
+  assumes cu_stable: "countable_union_stable M"
+  shows "non_decreasing_union_stable M"
+  using cu_stable unfolding countable_union_stable_def non_decreasing_union_stable_def by simp
 
-lemma sd_omega_imp_ndu_closed: 
-  assumes sd_closed: "set_diff_closed M"
-      and ndu_closed: "non_decreasing_union_closed M"
+lemma sd_omega_imp_ndu_stable: 
+  assumes sd_stable: "set_diff_stable M"
+      and ndu_stable: "non_decreasing_union_stable M"
       and omega: "\<Omega> \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>" 
-    shows "disj_countable_union_closed M" 
+    shows "disj_countable_union_stable M" 
 proof - 
   have "M \<noteq> {}"
     using omega by auto  
@@ -1054,8 +1054,8 @@ proof -
           by blast 
       
         moreover have "(\<Omega> - A (Suc n)) \<in> M"
-          by (meson A_disj_in_M M_pow complement_closed_def omega range_subsetD sd_closed 
-             sd_omega_imp_c_closed)
+          by (meson A_disj_in_M M_pow complement_stable_def omega range_subsetD sd_stable 
+             sd_omega_imp_c_stable)
         moreover have "?B n \<subseteq> (\<Omega> - A (Suc n))" 
         proof 
           fix x
@@ -1071,16 +1071,16 @@ proof -
             by simp 
         qed
         moreover have "((\<Omega> - A (Suc n)) - ?B n) \<in> M"
-          using calculation sd_closed Suc.IH Suc.prems unfolding set_diff_closed_def by blast 
+          using calculation sd_stable Suc.IH Suc.prems unfolding set_diff_stable_def by blast 
         ultimately show "\<Union> (A ` {i. i \<le> Suc n}) \<in> M"
-          using omega sd_closed unfolding set_diff_closed_def by auto 
+          using omega sd_stable unfolding set_diff_stable_def by auto 
       qed
     qed  
     hence "range ?B \<subseteq> M" 
       by auto 
 
     ultimately have "\<Union> (range ?B) \<in> M"
-      using ndu_closed unfolding non_decreasing_union_closed_def by blast 
+      using ndu_stable unfolding non_decreasing_union_stable_def by blast 
 
     moreover have "\<Union> (range ?B) = \<Union> (range A)"
       by fastforce 
@@ -1089,16 +1089,16 @@ proof -
       by auto 
   qed 
   ultimately show ?thesis 
-    using disj_countable_union_closed_def by metis 
+    using disj_countable_union_stable_def by metis 
 qed
 
-lemma ndu_fu_imp_cu_closed:
-  assumes ndu_closed: "non_decreasing_union_closed M"
-      and fu_closed: "finite_union_closed M"
-    shows "countable_union_closed M"
+lemma ndu_fu_imp_cu_stable:
+  assumes ndu_stable: "non_decreasing_union_stable M"
+      and fu_stable: "finite_union_stable M"
+    shows "countable_union_stable M"
 proof - 
   have M_non_empty: "M \<noteq> {}"
-    using fu_closed unfolding finite_union_closed_def by auto 
+    using fu_stable unfolding finite_union_stable_def by auto 
 
   moreover have "\<forall>A::(nat \<Rightarrow> 'a set). range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M"
   proof (rule ; rule)
@@ -1144,14 +1144,14 @@ proof -
         moreover have "A (Suc n) \<in> M"
           using A_within_M by auto    
         ultimately show "\<Union> (A ` {0..Suc n}) \<in> M"  
-          using fu_closed unfolding finite_union_closed_def by auto  
+          using fu_stable unfolding finite_union_stable_def by auto  
       qed
     qed 
     hence "range ?B \<subseteq> M" 
       by blast 
    
     ultimately have "\<Union> (range ?B) \<in> M"
-      using M_non_empty ndu_closed unfolding non_decreasing_union_closed_def by auto 
+      using M_non_empty ndu_stable unfolding non_decreasing_union_stable_def by auto 
     moreover have "\<Union> (range ?B) = \<Union> (range A)" 
       by fastforce 
     ultimately show "\<Union> (range A) \<in> M" 
@@ -1159,15 +1159,15 @@ proof -
   qed
 
   ultimately show ?thesis
-    unfolding countable_union_closed_def by auto
+    unfolding countable_union_stable_def by auto
 qed
 
-lemma dcu_c_empty_imp_ndu_closed: 
-  assumes dcu_closed: "disj_countable_union_closed M"
-      and c_closed: "complement_closed \<Omega> M"
+lemma dcu_c_empty_imp_ndu_stable: 
+  assumes dcu_stable: "disj_countable_union_stable M"
+      and c_stable: "complement_stable \<Omega> M"
       and empty_in: "{} \<in> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "non_decreasing_union_closed M"
+    shows "non_decreasing_union_stable M"
 proof - 
   have "M \<noteq> {}"
     using empty_in by auto 
@@ -1205,8 +1205,8 @@ proof -
         qed 
       qed
        
-      moreover have sd_closed: "set_diff_closed M"
-        using assms dcu_c_empty_imp_sd_closed by auto
+      moreover have sd_stable: "set_diff_stable M"
+        using assms dcu_c_empty_imp_sd_stable by auto
       hence "\<forall>n. ?B n \<in> M" 
       proof - 
         have "\<forall>n. ?B n = A 0 \<or> ?B n = A n - A (n-1)"
@@ -1214,14 +1214,14 @@ proof -
         moreover have "\<forall>n. A n \<in> M"
           using A_is_nondecreasing_within_M by blast
         ultimately show "\<forall>n. ?B n \<in> M"
-          using sd_closed unfolding set_diff_closed_def
+          using sd_stable unfolding set_diff_stable_def
           by (simp add: A_is_nondecreasing_within_M non_decreasing_multistep) 
       qed
       hence "range ?B \<subseteq> M"
         by blast
         
       ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
-        using dcu_closed unfolding disj_countable_union_closed_def by blast
+        using dcu_stable unfolding disj_countable_union_stable_def by blast
 
       moreover have "\<Union> (range A) \<subseteq> (\<Union>i. ?B i)"
       proof 
@@ -1244,27 +1244,27 @@ proof -
     qed 
 
   ultimately show ?thesis
-    by (simp add: non_decreasing_union_closed_def)
+    by (simp add: non_decreasing_union_stable_def)
 qed
 
 
-definition non_increasing_inter_closed :: "'a set set \<Rightarrow> bool"
-  where "non_increasing_inter_closed M = 
+definition non_increasing_inter_stable :: "'a set set \<Rightarrow> bool"
+  where "non_increasing_inter_stable M = 
         ((M \<noteq> {}) \<and> (\<forall>A. (range A \<subseteq> M \<and> non_increasing A) \<longrightarrow> ((\<Inter>i::nat. A i) \<in> M)))"
 
-lemma ci_imp_nii_closed: 
-  assumes ci_closed: "countable_inter_closed M"
-  shows "non_increasing_inter_closed M"
-  using ci_closed unfolding countable_inter_closed_def non_increasing_inter_closed_def by simp 
+lemma ci_imp_nii_stable: 
+  assumes ci_stable: "countable_inter_stable M"
+  shows "non_increasing_inter_stable M"
+  using ci_stable unfolding countable_inter_stable_def non_increasing_inter_stable_def by simp 
 
-lemma ndu_c_imp_nii_closed: 
-  assumes ndu_closed: "non_decreasing_union_closed M"
-      and c_closed: "complement_closed \<Omega> M"
+lemma ndu_c_imp_nii_stable: 
+  assumes ndu_stable: "non_decreasing_union_stable M"
+      and c_stable: "complement_stable \<Omega> M"
       and M_pow: "M \<subseteq> Pow \<Omega>"
-    shows "non_increasing_inter_closed M"
+    shows "non_increasing_inter_stable M"
 proof - 
   have "M \<noteq> {}"
-    using c_closed complement_closed_def by auto
+    using c_stable complement_stable_def by auto
 
   moreover have "\<forall>A. range A \<subseteq> M \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> M"
   proof (rule; rule)
@@ -1275,11 +1275,11 @@ proof -
     hence "non_decreasing ?B" 
       unfolding non_increasing_def non_decreasing_def by auto 
     moreover have "range ?B \<subseteq> M"
-      using A_non_inc_within_M c_closed complement_closed_def by blast  
+      using A_non_inc_within_M c_stable complement_stable_def by blast  
     ultimately have "\<Union> (range ?B) \<in> M" 
-      using ndu_closed unfolding non_decreasing_union_closed_def by blast 
+      using ndu_stable unfolding non_decreasing_union_stable_def by blast 
     hence "\<Omega> - \<Union> (range ?B) \<in> M" 
-      using c_closed unfolding complement_closed_def by auto 
+      using c_stable unfolding complement_stable_def by auto 
 
     moreover have "\<Inter> (range A) = \<Omega> - \<Union> (range ?B)" 
     proof (rule ; rule)
@@ -1309,7 +1309,7 @@ proof -
   qed
 
   ultimately show ?thesis 
-    unfolding non_increasing_inter_closed_def by auto 
+    unfolding non_increasing_inter_stable_def by auto 
 qed
 
 
@@ -1322,66 +1322,66 @@ to prove something and need a convenient set to do it. We'll soon see what they'
 
 The following proofs will be pretty easy. The heavy lifting was done in the previous subsection."
 
-lemma algebra_omega_c_fu_closed: 
-  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M)"
+lemma algebra_omega_c_fu_stable: 
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M)"
 proof 
   assume alg: "algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> {} \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
-    using algebra_iff_Un complement_closed_def finite_union_closed_def by fastforce
+  hence "M \<subseteq> Pow \<Omega> \<and> {} \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M"
+    using algebra_iff_Un complement_stable_def finite_union_stable_def by fastforce
   moreover have "\<Omega> \<in> M"
     by (simp add: alg algebra.top) 
-  ultimately show "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M" 
+  ultimately show "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M" 
     by simp 
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M"
   moreover have "{} \<in> M"
-    using calculation complement_closed_def Diff_cancel by metis 
+    using calculation complement_stable_def Diff_cancel by metis 
   ultimately show "algebra \<Omega> M" 
-    by (simp add: algebra_iff_Un complement_closed_def finite_union_closed_def) 
+    by (simp add: algebra_iff_Un complement_stable_def finite_union_stable_def) 
 qed 
 
-lemma algebra_omega_c_fi_closed: 
-  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_inter_closed M)"
+lemma algebra_omega_c_fi_stable: 
+  shows "algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_inter_stable M)"
 proof 
   assume "algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
-    by (simp add: algebra_omega_c_fu_closed)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_inter_closed M"
-    by (meson Pow_iff c_fu_imp_fi_closed subset_iff)
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M"
+    by (simp add: algebra_omega_c_fu_stable)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_inter_stable M"
+    by (meson Pow_iff c_fu_imp_fi_stable subset_iff)
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_inter_closed M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
-    by (meson PowD c_fi_imp_fu_closed subset_eq)
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_inter_stable M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M"
+    by (meson PowD c_fi_imp_fu_stable subset_eq)
   thus "algebra \<Omega> M"
-    by (simp add: algebra_omega_c_fu_closed)
+    by (simp add: algebra_omega_c_fu_stable)
 qed 
 
-lemma sigma_algebra_omega_c_cu_closed: 
-  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M)"
+lemma sigma_algebra_omega_c_cu_stable: 
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_union_stable M)"
 proof -
   have "sigma_algebra \<Omega> M = (algebra \<Omega> M \<and> (\<forall>A. range A \<subseteq> M \<longrightarrow> (\<Union>i::nat. A i) \<in> M))"
     using sigma_algebra_iff by simp 
-  hence "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M
+  hence "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M
         \<and> (\<forall>A. range A \<subseteq> M \<longrightarrow> (\<Union>i::nat. A i) \<in> M))"
-    by (simp add: algebra_omega_c_fu_closed)
+    by (simp add: algebra_omega_c_fu_stable)
   thus ?thesis
-    by (metis countable_union_closed_def empty_iff cu_imp_fu_closed)
+    by (metis countable_union_stable_def empty_iff cu_imp_fu_stable)
 qed
 
-lemma sigma_algebra_omega_c_ci_closed: 
-  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_inter_closed M)"
+lemma sigma_algebra_omega_c_ci_stable: 
+  shows "sigma_algebra \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_inter_stable M)"
 proof 
   assume "sigma_algebra \<Omega> M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
-    by (simp add: sigma_algebra_omega_c_cu_closed)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_inter_closed M"
-    by (meson Pow_iff c_cu_imp_ci_closed subset_iff)
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_union_stable M"
+    by (simp add: sigma_algebra_omega_c_cu_stable)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_inter_stable M"
+    by (meson Pow_iff c_cu_imp_ci_stable subset_iff)
 next 
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_inter_closed M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
-    by (meson PowD c_ci_imp_cu_closed subset_eq)
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_inter_stable M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_union_stable M"
+    by (meson PowD c_ci_imp_cu_stable subset_eq)
   thus "sigma_algebra \<Omega> M"
-    by (simp add: sigma_algebra_omega_c_cu_closed)
+    by (simp add: sigma_algebra_omega_c_cu_stable)
 qed
 
 lemma empty_in_sigma: 
@@ -1389,44 +1389,44 @@ lemma empty_in_sigma:
   shows "{} \<in> M"
 proof - 
   have "\<Omega> - \<Omega> \<in> M"
-    using sigma_algebra_omega_c_ci_closed sa unfolding complement_closed_def by blast 
+    using sigma_algebra_omega_c_ci_stable sa unfolding complement_stable_def by blast 
   thus ?thesis 
     by auto 
 qed 
 
 locale monotone_class = subset_class + 
-  assumes ndu_closed: "non_decreasing_union_closed M"
-      and ncdi_closed: "non_increasing_inter_closed M"
+  assumes ndu_stable: "non_decreasing_union_stable M"
+      and ncdi_stable: "non_increasing_inter_stable M"
 
 locale pi_system = subset_class + 
-  assumes fi_closed: "finite_inter_closed M"
+  assumes fi_stable: "finite_inter_stable M"
 
-lemma Dynkin_omega_c_disju_closed:
-  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> disj_countable_union_closed M)"
+lemma Dynkin_omega_c_disju_stable:
+  shows "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> disj_countable_union_stable M)"
 proof - 
   have "Dynkin_system \<Omega> M = (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> (\<forall>A. A \<in> M \<longrightarrow> \<Omega> - A \<in> M) \<and> 
        (\<forall>A::nat \<Rightarrow> 'a set. disjoint_family A \<longrightarrow> range A \<subseteq> M \<longrightarrow> \<Union> (range A) \<in> M))"
     unfolding Dynkin_system_def Dynkin_system_axioms_def subset_class_def by fast 
   thus ?thesis 
-    using complement_closed_def disj_countable_union_closed_def empty_iff by metis
+    using complement_stable_def disj_countable_union_stable_def empty_iff by metis
 qed
 
 text "We show an equivalent definition of a Dynkin system."
-lemma Dynkin_omega_diff_ndu_closed:
+lemma Dynkin_omega_diff_ndu_stable:
   shows "Dynkin_system \<Omega> M = 
-         (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M)"
+         (M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_stable M \<and> non_decreasing_union_stable M)"
 proof
   assume dynk: "Dynkin_system \<Omega> M"
   hence "{} \<in> M"
     by (simp add: Dynkin_system.empty)
-  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
-    by (metis Dynkin_omega_c_disju_closed dcu_c_empty_imp_ndu_closed dcu_c_empty_imp_sd_closed dynk)
+  thus "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_stable M \<and> non_decreasing_union_stable M"
+    by (metis Dynkin_omega_c_disju_stable dcu_c_empty_imp_ndu_stable dcu_c_empty_imp_sd_stable dynk)
 next
-  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> disj_countable_union_closed M"
-    using sd_omega_imp_c_closed sd_omega_imp_ndu_closed by auto
+  assume "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_stable M \<and> non_decreasing_union_stable M"
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> disj_countable_union_stable M"
+    using sd_omega_imp_c_stable sd_omega_imp_ndu_stable by auto
   thus "Dynkin_system \<Omega> M"
-    using Dynkin_omega_c_disju_closed by auto 
+    using Dynkin_omega_c_disju_stable by auto 
 qed 
 
 subsubsection "Relations between Set Collections"
@@ -1436,9 +1436,9 @@ theorem algebra_is_pi:
   shows "pi_system \<Omega> M"
 proof - 
   have "subset_class \<Omega> M"
-    by (meson algebra_omega_c_fi_closed a subset_class.intro)
-  moreover have "finite_inter_closed M"
-    using algebra_omega_c_fi_closed a by blast  
+    by (meson algebra_omega_c_fi_stable a subset_class.intro)
+  moreover have "finite_inter_stable M"
+    using algebra_omega_c_fi_stable a by blast  
   ultimately show ?thesis
     by (simp add: pi_system.intro pi_system_axioms.intro) 
 qed
@@ -1447,27 +1447,27 @@ theorem sigma_is_algebra:
   assumes sa: "sigma_algebra \<Omega> M"
   shows "algebra \<Omega> M"
 proof - 
-  have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
-    by (meson sa sigma_algebra_omega_c_cu_closed)
-  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> finite_union_closed M"
-    by (simp add: cu_imp_fu_closed)
+  have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_union_stable M"
+    by (meson sa sigma_algebra_omega_c_cu_stable)
+  hence "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> finite_union_stable M"
+    by (simp add: cu_imp_fu_stable)
   thus ?thesis
-    by (simp add: algebra_omega_c_fu_closed) 
+    by (simp add: algebra_omega_c_fu_stable) 
 qed
 
 theorem sigma_is_mono: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "monotone_class \<Omega> M"
 proof - 
-  have sa_properties: "M \<subseteq> Pow \<Omega> \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
-    using sa sigma_algebra_omega_c_cu_closed by auto
+  have sa_properties: "M \<subseteq> Pow \<Omega> \<and> complement_stable \<Omega> M \<and> countable_union_stable M"
+    using sa sigma_algebra_omega_c_cu_stable by auto
 
   hence "M \<subseteq> Pow \<Omega>"
     by simp
-  moreover have "non_decreasing_union_closed M"
-    by (simp add: cu_imp_ndu_closed sa_properties)
-  moreover have "non_increasing_inter_closed M"
-    using sa_properties calculation ndu_c_imp_nii_closed by auto
+  moreover have "non_decreasing_union_stable M"
+    by (simp add: cu_imp_ndu_stable sa_properties)
+  moreover have "non_increasing_inter_stable M"
+    using sa_properties calculation ndu_c_imp_nii_stable by auto
 
   ultimately show ?thesis
     unfolding monotone_class_def monotone_class_axioms_def subset_class_def by auto 
@@ -1482,12 +1482,12 @@ proof
     by (simp add: sigma_is_mono) 
 next
   assume "monotone_class \<Omega> M"
-  hence "{} \<in> M \<and> finite_union_closed M \<and> non_decreasing_union_closed M"
-    by (metis algebra_iff_Int algebra_omega_c_fu_closed a monotone_class.ndu_closed)
-  hence "countable_union_closed M"
-    by (simp add: ndu_fu_imp_cu_closed)  
+  hence "{} \<in> M \<and> finite_union_stable M \<and> non_decreasing_union_stable M"
+    by (metis algebra_iff_Int algebra_omega_c_fu_stable a monotone_class.ndu_stable)
+  hence "countable_union_stable M"
+    by (simp add: ndu_fu_imp_cu_stable)  
   thus "sigma_algebra \<Omega> M"
-    by (meson algebra_omega_c_fi_closed a sigma_algebra_omega_c_cu_closed) 
+    by (meson algebra_omega_c_fi_stable a sigma_algebra_omega_c_cu_stable) 
 qed
 
 theorem sigma_is_Dynkin:
@@ -1496,15 +1496,15 @@ theorem sigma_is_Dynkin:
 proof - 
 
   have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M"
-    by (metis sa sigma_algebra_omega_c_cu_closed)
+    by (metis sa sigma_algebra_omega_c_cu_stable)
 
-  moreover have "finite_union_closed M"
-    using cu_imp_fu_closed sa sigma_algebra_omega_c_cu_closed by auto
+  moreover have "finite_union_stable M"
+    using cu_imp_fu_stable sa sigma_algebra_omega_c_cu_stable by auto
 
-  moreover have "complement_closed \<Omega> M"
-    using sa sigma_algebra_omega_c_cu_closed by auto  
-  hence "set_diff_closed M"
-    using c_fu_omega_imp_sd_closed calculation
+  moreover have "complement_stable \<Omega> M"
+    using sa sigma_algebra_omega_c_cu_stable by auto  
+  hence "set_diff_stable M"
+    using c_fu_omega_imp_sd_stable calculation
     by auto 
 
   ultimately show ?thesis
@@ -1520,29 +1520,29 @@ proof
     by (simp add: algebra_is_pi sigma_is_algebra)
 next 
   assume "pi_system \<Omega> M"
-  hence "finite_inter_closed M \<and> complement_closed \<Omega> M \<and> (\<forall>S\<in>M. S \<subseteq> \<Omega>) \<and> non_decreasing_union_closed M"
-    using dynk Dynkin_omega_diff_ndu_closed Dynkin_omega_c_disju_closed 
+  hence "finite_inter_stable M \<and> complement_stable \<Omega> M \<and> (\<forall>S\<in>M. S \<subseteq> \<Omega>) \<and> non_decreasing_union_stable M"
+    using dynk Dynkin_omega_diff_ndu_stable Dynkin_omega_c_disju_stable 
     unfolding pi_system_def pi_system_axioms_def by blast 
-  hence "finite_union_closed M \<and> non_decreasing_union_closed M"
-    using c_fi_imp_fu_closed by auto 
-  hence "countable_union_closed M"
-    by (simp add: ndu_fu_imp_cu_closed) 
+  hence "finite_union_stable M \<and> non_decreasing_union_stable M"
+    using c_fi_imp_fu_stable by auto 
+  hence "countable_union_stable M"
+    by (simp add: ndu_fu_imp_cu_stable) 
 
-  moreover have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M"
-    by (metis Dynkin_omega_c_disju_closed dynk)
+  moreover have "M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M"
+    by (metis Dynkin_omega_c_disju_stable dynk)
  
   ultimately show "sigma_algebra \<Omega> M"
-    using sigma_algebra_omega_c_cu_closed by auto
+    using sigma_algebra_omega_c_cu_stable by auto
 qed
 
 theorem Dynkin_is_mono:
   assumes dynk: "Dynkin_system \<Omega> M"
   shows "monotone_class \<Omega> M"
 proof - 
-  have "M \<subseteq> Pow \<Omega> \<and> complement_closed \<Omega> M \<and> non_decreasing_union_closed M"
-    by (meson Dynkin_omega_c_disju_closed Dynkin_omega_diff_ndu_closed dynk)
-  hence "M \<subseteq> Pow \<Omega> \<and> non_decreasing_union_closed M \<and> non_increasing_inter_closed M"
-    using ndu_c_imp_nii_closed by auto
+  have "M \<subseteq> Pow \<Omega> \<and> complement_stable \<Omega> M \<and> non_decreasing_union_stable M"
+    by (meson Dynkin_omega_c_disju_stable Dynkin_omega_diff_ndu_stable dynk)
+  hence "M \<subseteq> Pow \<Omega> \<and> non_decreasing_union_stable M \<and> non_increasing_inter_stable M"
+    using ndu_c_imp_nii_stable by auto
   thus ?thesis
     by (simp add: monotone_class.intro monotone_class_axioms.intro subset_class.intro) 
 qed
@@ -1552,12 +1552,12 @@ theorem sigma_Pow_is_sigma:
       and subseq: "S \<in> M"
     shows "sigma_algebra S (Pow S)"
 proof - 
-  have "complement_closed S (Pow S)" 
-    unfolding complement_closed_def by (simp add: Pow_not_empty complement_closed_def)
-  moreover have "countable_union_closed (Pow S)" 
-    unfolding countable_union_closed_def by blast 
+  have "complement_stable S (Pow S)" 
+    unfolding complement_stable_def by (simp add: Pow_not_empty complement_stable_def)
+  moreover have "countable_union_stable (Pow S)" 
+    unfolding countable_union_stable_def by blast 
   ultimately show ?thesis
-    by (simp add: sigma_algebra_omega_c_cu_closed) 
+    by (simp add: sigma_algebra_omega_c_cu_stable) 
 qed 
 
 theorem sigma_inter_is_sigma:
@@ -1567,8 +1567,8 @@ theorem sigma_inter_is_sigma:
 proof - 
   let ?I = "(\<Inter>M\<in>X. M)"
 
-  have sa_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_closed \<Omega> M \<and> countable_union_closed M"
-    by (meson sas sigma_algebra_omega_c_cu_closed)
+  have sa_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> complement_stable \<Omega> M \<and> countable_union_stable M"
+    by (meson sas sigma_algebra_omega_c_cu_stable)
 
   have "?I \<subseteq> Pow \<Omega>" 
   proof 
@@ -1583,22 +1583,22 @@ proof -
   moreover have "\<Omega> \<in> ?I"  
     using sa_properties by simp 
  
-  moreover have "complement_closed \<Omega> ?I" 
-    using sa_properties unfolding complement_closed_def by blast
+  moreover have "complement_stable \<Omega> ?I" 
+    using sa_properties unfolding complement_stable_def by blast
 
-  moreover have "countable_union_closed ?I" 
-    unfolding countable_union_closed_def 
+  moreover have "countable_union_stable ?I" 
+    unfolding countable_union_stable_def 
   proof 
     show "?I \<noteq> {}"
       using calculation(2) by auto
   next 
     show "\<forall>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> ?I \<longrightarrow> \<Union> (range A) \<in> ?I"
-      using sa_properties unfolding countable_union_closed_def
+      using sa_properties unfolding countable_union_stable_def
       by (simp add: le_Inf_iff) 
   qed
 
   ultimately show ?thesis
-    by (simp add: sigma_algebra_omega_c_cu_closed)
+    by (simp add: sigma_algebra_omega_c_cu_stable)
 qed
 
 lemma Dynkin_inter_is_Dynkin:
@@ -1608,8 +1608,8 @@ lemma Dynkin_inter_is_Dynkin:
 proof - 
   let ?I = "(\<Inter>M\<in>X. M)"
 
-  have dy_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_closed M \<and> non_decreasing_union_closed M"
-    by (metis Dynkin_omega_diff_ndu_closed dynks)
+  have dy_properties: "\<forall>M\<in>X. M \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> M \<and> set_diff_stable M \<and> non_decreasing_union_stable M"
+    by (metis Dynkin_omega_diff_ndu_stable dynks)
 
   have "?I \<subseteq> Pow \<Omega>" 
   proof 
@@ -1624,22 +1624,22 @@ proof -
   moreover have "\<Omega> \<in> ?I"  
     using dy_properties by simp 
  
-  moreover have "set_diff_closed ?I" 
-    using dy_properties unfolding set_diff_closed_def by auto 
+  moreover have "set_diff_stable ?I" 
+    using dy_properties unfolding set_diff_stable_def by auto 
 
-  moreover have "non_decreasing_union_closed ?I" 
-    unfolding non_decreasing_union_closed_def 
+  moreover have "non_decreasing_union_stable ?I" 
+    unfolding non_decreasing_union_stable_def 
   proof 
     show "?I \<noteq> {}"
       using calculation(2) by auto
   next 
     show "\<forall>A. range A \<subseteq> ?I \<and> non_decreasing A \<longrightarrow> \<Union> (range A) \<in> ?I"
-      using dy_properties unfolding non_decreasing_union_closed_def
+      using dy_properties unfolding non_decreasing_union_stable_def
       by (simp add: le_Inf_iff) 
   qed
 
   ultimately show ?thesis
-    by (simp add: Dynkin_omega_diff_ndu_closed)
+    by (simp add: Dynkin_omega_diff_ndu_stable)
 qed
 
 theorem sigma_ndu_is_algebra:
@@ -1647,8 +1647,8 @@ theorem sigma_ndu_is_algebra:
       and non_dec: "non_decreasing X"
     shows "algebra \<Omega> (\<Union>(range X))"
 proof -
-  have a_properties: "\<forall>n. X n \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> X n \<and> complement_closed \<Omega> (X n) \<and> countable_union_closed (X n)"
-    by (meson sas sigma_algebra_omega_c_cu_closed)
+  have a_properties: "\<forall>n. X n \<subseteq> Pow \<Omega> \<and> \<Omega> \<in> X n \<and> complement_stable \<Omega> (X n) \<and> countable_union_stable (X n)"
+    by (meson sas sigma_algebra_omega_c_cu_stable)
 
   hence "(\<Union>(range X)) \<subseteq> Pow \<Omega>" 
     by fast 
@@ -1656,17 +1656,17 @@ proof -
   moreover have "\<Omega> \<in> (\<Union>(range X))"
     using a_properties by auto 
 
-  moreover have "complement_closed \<Omega> (\<Union>(range X))"
-    using a_properties unfolding complement_closed_def by blast 
+  moreover have "complement_stable \<Omega> (\<Union>(range X))"
+    using a_properties unfolding complement_stable_def by blast 
 
-  moreover have "finite_union_closed (\<Union>(range X))"
-    unfolding finite_union_closed_def 
+  moreover have "finite_union_stable (\<Union>(range X))"
+    unfolding finite_union_stable_def 
   proof 
     show "\<Union> (range X) \<noteq> {}"
       using calculation(2) by auto
   next 
-    have fu_closed: "\<forall>n. finite_union_closed (X n)"
-      by (simp add: a_properties cu_imp_fu_closed)
+    have fu_stable: "\<forall>n. finite_union_stable (X n)"
+      by (simp add: a_properties cu_imp_fu_stable)
     show "\<forall>S\<in>\<Union> (range X). \<forall>T\<in>\<Union> (range X). S \<union> T \<in> \<Union> (range X)"
     proof (rule ; rule)
       fix S T
@@ -1679,19 +1679,19 @@ proof -
         hence "S \<in> X m"
           by (meson S_n non_dec non_decreasing_stay_in)
         thus "S \<union> T \<in> \<Union> (range X)"
-          using fu_closed T_m unfolding finite_union_closed_def by auto 
+          using fu_stable T_m unfolding finite_union_stable_def by auto 
       next
         case False
         hence "T \<in> X n"
           by (meson T_m nle_le non_dec non_decreasing_stay_in)  
         thus "S \<union> T \<in> \<Union> (range X)"
-          using fu_closed S_n unfolding finite_union_closed_def by auto 
+          using fu_stable S_n unfolding finite_union_stable_def by auto 
       qed 
     qed
   qed
 
   ultimately show ?thesis
-    by (simp add: algebra_omega_c_fu_closed) 
+    by (simp add: algebra_omega_c_fu_stable) 
 qed
 
 text "If M is a \<sigma>-algebra, and R \<subseteq> \<Omega>, then 'R \<inter> M' = {R \<inter> S : S \<in> M} is a \<sigma>-algebra on R."
@@ -1706,7 +1706,7 @@ proof -
     by auto 
 
   moreover have "\<Omega> \<in> M"
-    using sigma_algebra_omega_c_ci_closed sa by auto 
+    using sigma_algebra_omega_c_ci_stable sa by auto 
   hence "R \<in> ?N"
     using subseq by auto 
 
@@ -1719,12 +1719,12 @@ proof -
     hence "R - S = R \<inter> (\<Omega> - T)"
       using subseq by fast 
     moreover have "\<Omega> - T \<in> M"
-      using sigma_algebra_omega_c_ci_closed T_choice sa unfolding complement_closed_def by fast 
+      using sigma_algebra_omega_c_ci_stable T_choice sa unfolding complement_stable_def by fast 
     ultimately show "R - S \<in> ?N" 
       by auto 
   qed
-  hence "complement_closed R ?N" 
-    using calculation(2) unfolding complement_closed_def by auto 
+  hence "complement_stable R ?N" 
+    using calculation(2) unfolding complement_stable_def by auto 
 
   moreover have "\<forall>A :: (nat \<Rightarrow> 'a set). range A \<subseteq> ?N \<longrightarrow> \<Union> (range A) \<in> ?N"
   proof (rule ; rule)
@@ -1741,16 +1741,16 @@ proof -
     moreover have "range B \<subseteq> M"
       using B_choice by auto 
     hence "\<Union>(range B) \<in> M" 
-      using sa sigma_algebra_omega_c_cu_closed unfolding countable_union_closed_def by blast 
+      using sa sigma_algebra_omega_c_cu_stable unfolding countable_union_stable_def by blast 
 
     ultimately show "\<Union> (range A) \<in> ?N"
       by auto  
   qed 
-  hence "countable_union_closed ?N" 
-    using calculation(2) unfolding countable_union_closed_def by auto
+  hence "countable_union_stable ?N" 
+    using calculation(2) unfolding countable_union_stable_def by auto
 
   ultimately show "sigma_algebra R ?N"
-    by (simp add: sigma_algebra_omega_c_cu_closed)
+    by (simp add: sigma_algebra_omega_c_cu_stable)
 qed
 
 text "If \<Omega> and \<Omega>' are sets, M' a \<sigma>-algebra on \<Omega>' and T: \<Omega> \<rightarrow> \<Omega>' a mapping, then the collection of 
@@ -1771,13 +1771,13 @@ proof -
     hence "\<exists>S'\<in>M'. S = preimage f S'"
       by simp
     then obtain S' where "S = preimage f S'" and "S' \<subseteq> \<Omega>'"
-      using sa sigma_algebra_omega_c_cu_closed PowD subsetD by metis 
+      using sa sigma_algebra_omega_c_cu_stable PowD subsetD by metis 
     thus "S \<in> Pow ?\<Omega>"
       unfolding preimage_def by auto 
   qed 
 
   moreover have "?\<Omega> \<in> ?N"
-    using sa sigma_algebra_omega_c_cu_closed by auto
+    using sa sigma_algebra_omega_c_cu_stable by auto
 
   moreover have "(\<forall>S\<in>?N. ?\<Omega> - S \<in> ?N)"
   proof 
@@ -1790,12 +1790,12 @@ proof -
     hence "?\<Omega> - S = preimage f (\<Omega>' - S')"
       by (simp add: preimage_set_diff)  
     moreover have "(\<Omega>' - S') \<in> M'" 
-      using sigma_algebra_omega_c_ci_closed sa S'_M' unfolding complement_closed_def by blast
+      using sigma_algebra_omega_c_ci_stable sa S'_M' unfolding complement_stable_def by blast
     ultimately show "?\<Omega> - S \<in> ?N "
       by auto
   qed 
-  hence "complement_closed ?\<Omega> ?N"
-    unfolding complement_closed_def using calculation(2) by blast 
+  hence "complement_stable ?\<Omega> ?N"
+    unfolding complement_stable_def using calculation(2) by blast 
 
   moreover have "\<forall>A :: nat \<Rightarrow> 'a set. range A \<subseteq> ?N \<longrightarrow> \<Union> (range A) \<in> ?N"
   proof (rule ; rule)
@@ -1812,15 +1812,15 @@ proof -
     moreover have "range B \<subseteq> M'"
       by (simp add: B_choice image_subsetI)
     hence "(\<Union>(range B)) \<in> M'"
-      using sa sigma_algebra_omega_c_cu_closed B_choice unfolding countable_union_closed_def by auto  
+      using sa sigma_algebra_omega_c_cu_stable B_choice unfolding countable_union_stable_def by auto  
     ultimately show  "\<Union> (range A) \<in> ?N"
       by blast
   qed 
-  hence "countable_union_closed ?N"
-    unfolding countable_union_closed_def using calculation(2) by blast 
+  hence "countable_union_stable ?N"
+    unfolding countable_union_stable_def using calculation(2) by blast 
 
   ultimately show "sigma_algebra ?\<Omega> ?N"
-    by (simp add: sigma_algebra_omega_c_cu_closed)
+    by (simp add: sigma_algebra_omega_c_cu_stable)
 qed 
 
 text "For the infinite set \<Omega>, M consists of all S \<subseteq> \<Omega>, such that either S or -S is finite, then 
@@ -1852,8 +1852,8 @@ proof -
         using S_in_M by auto
     qed
   qed
-  hence "complement_closed \<Omega> ?M" 
-    unfolding complement_closed_def by blast  
+  hence "complement_stable \<Omega> ?M" 
+    unfolding complement_stable_def by blast  
   
   moreover have "(\<forall>S\<in>?M. \<forall>T\<in>?M. S \<inter> T \<in> ?M)" 
   proof (rule ; rule)
@@ -1887,11 +1887,11 @@ proof -
       qed 
     qed 
   qed 
-  hence "finite_inter_closed ?M"
-    unfolding finite_inter_closed_def by blast 
+  hence "finite_inter_stable ?M"
+    unfolding finite_inter_stable_def by blast 
 
   ultimately show "algebra \<Omega> ?M"
-    by (simp add: algebra_omega_c_fi_closed) 
+    by (simp add: algebra_omega_c_fi_stable) 
 qed
 
 text "...but not a \<sigma>-algebra."
@@ -1954,11 +1954,11 @@ proof -
     thus ?thesis 
       by meson  
     qed
-    hence "\<not>(countable_union_closed ?M)" 
-      using countable_union_closed_def by (metis (no_types)) 
+    hence "\<not>(countable_union_stable ?M)" 
+      using countable_union_stable_def by (metis (no_types)) 
 
   thus "\<not>sigma_algebra \<Omega> ?M" 
-    using sigma_algebra_omega_c_cu_closed by auto 
+    using sigma_algebra_omega_c_cu_stable by auto 
 qed
 
 section "Generators"
@@ -2016,8 +2016,8 @@ definition Mono :: "'a set \<Rightarrow> 'a set set \<Rightarrow> 'a set set" wh
 
 lemma monotone_classI:
   assumes "M \<subseteq> Pow \<Omega>"
-      and "non_decreasing_union_closed M"
-      and "non_increasing_inter_closed M"
+      and "non_decreasing_union_stable M"
+      and "non_increasing_inter_stable M"
     shows "monotone_class \<Omega> M"
   by (simp add: assms monotone_class_axioms.intro monotone_class_def subset_class.intro)
 
@@ -2045,11 +2045,11 @@ next
     fix A :: "nat \<Rightarrow> 'a set"
     assume A_range: "range A \<subseteq> Mono \<Omega> M" and A_nd: "non_decreasing A"
     thus "\<Union> (range A) \<in> Mono \<Omega> M" 
-      unfolding Mono_def monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+      unfolding Mono_def monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
       by blast 
   qed 
-  thus "non_decreasing_union_closed (Mono \<Omega> M)"
-    unfolding non_decreasing_union_closed_def Mono_def 
+  thus "non_decreasing_union_stable (Mono \<Omega> M)"
+    unfolding non_decreasing_union_stable_def Mono_def 
     using monotone_class_trivial M_Pow non_empty by blast 
 next
   have "\<forall>A. range A \<subseteq> Mono \<Omega> M \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> Mono \<Omega> M"
@@ -2057,11 +2057,11 @@ next
     fix A :: "nat \<Rightarrow> 'a set"
     assume A_range: "range A \<subseteq> Mono \<Omega> M" and A_ni: "non_increasing A"
     thus "\<Inter> (range A) \<in> Mono \<Omega> M"
-      unfolding Mono_def monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+      unfolding Mono_def monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
       by blast 
   qed 
-  thus "non_increasing_inter_closed (Mono \<Omega> M)"
-    unfolding non_increasing_inter_closed_def Mono_def 
+  thus "non_increasing_inter_stable (Mono \<Omega> M)"
+    unfolding non_increasing_inter_stable_def Mono_def 
     using monotone_class_trivial M_Pow non_empty by blast 
 qed
 
@@ -2101,6 +2101,8 @@ theorem algebra_least_sigma_mono:
   assumes alg: "algebra \<Omega> M"
   shows "Mono \<Omega> M = sigma_sets \<Omega> M"
 proof 
+  text "Since every \<sigma>-algebra is a monotone class and \<MM>(M) is the minimal monotone class containing
+        M, we know from the outset that \<MM>(M) \<subseteq> \<sigma>(M)."
   have "sigma_algebra \<Omega> (sigma_sets \<Omega> M)"
     by (metis algebra_iff_Un assms sigma_algebra_sigma_sets)
   hence "monotone_class \<Omega> (sigma_sets \<Omega> M)"
@@ -2114,22 +2116,20 @@ proof
   ultimately show "Mono \<Omega> M \<subseteq> sigma_sets \<Omega> M"
     by (metis (mono_tags, lifting) Inter_lower Mono_def mem_Collect_eq) 
 next 
-
   have "M \<noteq> {} \<and> M \<subseteq> Pow \<Omega>"
     using algebra.top alg algebra_iff_Int empty_iff by metis 
   hence mono_mono: "monotone_class \<Omega> (Mono \<Omega> M)"
     by (simp add: monotone_class_Mono)
-
+  text "To prove the opposite inclusion we must, due to the minimality of \<sigma>{M}, prove that \<MM>{M}
+        is a \<sigma>-algebra, for which it is sufficient to prove that \<MM>{M} is an algebra."
   moreover have "algebra \<Omega> (Mono \<Omega> M)" 
   proof -
     have mono_Pow: "(Mono \<Omega> M) \<subseteq> Pow \<Omega>"
       using mono_mono monotone_class_def subset_class_def by blast
-
     moreover have M_subseq: "M \<subseteq> (Mono \<Omega> M)"
       unfolding Mono_def by auto 
-    hence "\<Omega> \<in> (Mono \<Omega> M)" 
-      using alg algebra.top by auto 
 
+    (* \<MM>(M) is complement-stable. *)
     moreover have "\<forall>S\<in>Mono \<Omega> M. \<forall>T\<in>Mono \<Omega> M. \<Omega> - S \<in> Mono \<Omega> M \<and> S \<union> T \<in> Mono \<Omega> M" 
     proof -
       let ?\<xi> = "{S\<in>Mono \<Omega> M. \<forall>T\<in>M. S \<union> T \<in> Mono \<Omega> M}"
@@ -2147,6 +2147,8 @@ next
 
         have "Mono \<Omega> M = ?\<xi>"
         proof 
+          text "We first note that \<xi> is a monotone class via the identities 
+                (\<Inter>n. A n) \<union> S = (\<Inter>n. A n \<union> S) and (\<Union>n. A n) \<union> S = (\<Union>n. A n \<union> S)."
           have "monotone_class \<Omega> ?\<xi>"
             unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
           proof (rule ; rule)
@@ -2163,7 +2165,7 @@ next
                 by auto
               hence "\<Union> (range A) \<in> Mono \<Omega> M" 
                 using mono_mono 
-                unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
                 by auto 
               moreover have "\<forall>T\<in>M. \<Union> (range A) \<union> T \<in> Mono \<Omega> M"  
               proof 
@@ -2176,7 +2178,7 @@ next
                   using A_nd unfolding non_decreasing_def by blast
                 ultimately have "\<Union> (range ?B) \<in> Mono \<Omega> M" 
                   using mono_mono 
-                  unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                  unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
                   by auto 
                 thus "\<Union> (range A) \<union> T \<in> Mono \<Omega> M" 
                   by auto 
@@ -2185,8 +2187,8 @@ next
               ultimately show "\<Union> (range A) \<in> ?\<xi>"
                 by auto  
             qed
-            thus "non_decreasing_union_closed ?\<xi>"
-              using ne_xi unfolding non_decreasing_union_closed_def by auto  
+            thus "non_decreasing_union_stable ?\<xi>"
+              using ne_xi unfolding non_decreasing_union_stable_def by auto  
           next 
             have "\<forall>A. range A \<subseteq> ?\<xi> \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> ?\<xi>"
             proof (rule ; rule ; erule conjE)
@@ -2196,7 +2198,7 @@ next
                 by auto
               hence "\<Inter> (range A) \<in> Mono \<Omega> M" 
                 using mono_mono 
-                unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
                 by auto 
               moreover have "\<forall>T\<in>M. \<Inter> (range A) \<union> T \<in> Mono \<Omega> M"  
               proof 
@@ -2209,7 +2211,7 @@ next
                   using A_ni unfolding non_increasing_def by blast
                 ultimately have "\<Inter> (range ?B) \<in> Mono \<Omega> M" 
                   using mono_mono 
-                  unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                  unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
                   by auto 
                 thus "\<Inter> (range A) \<union> T \<in> Mono \<Omega> M" 
                   by auto 
@@ -2218,21 +2220,27 @@ next
               ultimately show "\<Inter> (range A) \<in> ?\<xi>"
                 by auto  
             qed
-            thus "non_increasing_inter_closed ?\<xi>"
-              using ne_xi unfolding non_increasing_inter_closed_def by auto 
+            thus "non_increasing_inter_stable ?\<xi>"
+              using ne_xi unfolding non_increasing_inter_stable_def by auto 
           qed 
           moreover have "M \<subseteq> ?\<xi>"
             by (smt (verit) Ball_Collect M_subseq algebra_iff_Un assms subset_iff)  
+          text "\<MM>(M) \<subseteq> \<xi>, in view of minimality of \<MM>(M)."
           ultimately show "Mono \<Omega> M \<subseteq> ?\<xi>"
             unfolding Mono_def by blast 
         next 
-          show "?\<xi> \<subseteq> Mono \<Omega> M" by auto  
+          text "\<xi> \<subseteq> \<MM>(M), by construction."
+          show "?\<xi> \<subseteq> Mono \<Omega> M" 
+            by auto  
         qed
         hence "\<forall>S\<in>Mono \<Omega> M. \<forall>T\<in>M. S \<union> T \<in> Mono \<Omega> M"
           by blast
+        hence "\<forall>T\<in>M. \<forall>S\<in>Mono \<Omega> M. T \<union> S \<in> Mono \<Omega> M"
+          by (metis sup_commute)
         hence "M \<subseteq> ?\<xi>''"
-          by (smt (verit, ccfv_threshold) M_subseq in_mono mem_Collect_eq subsetI sup_commute)
+          using M_subseq by blast 
 
+        text "\<xi>'' is a monotone class due to the same identities as \<xi>."
         moreover have "monotone_class \<Omega> ?\<xi>''" 
         unfolding monotone_class_def monotone_class_axioms_def subset_class_def 
           proof (rule ; rule)
@@ -2249,7 +2257,7 @@ next
                 by auto
               hence "\<Union> (range A) \<in> Mono \<Omega> M" 
                 using mono_mono 
-                unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
                 by auto 
               moreover have "\<forall>T\<in>Mono \<Omega> M. \<Union> (range A) \<union> T \<in> Mono \<Omega> M"  
               proof 
@@ -2262,7 +2270,7 @@ next
                   using A_nd unfolding non_decreasing_def by blast
                 ultimately have "\<Union> (range ?B) \<in> Mono \<Omega> M" 
                   using mono_mono 
-                  unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+                  unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
                   by auto 
                 thus "\<Union> (range A) \<union> T \<in> Mono \<Omega> M" 
                   by auto 
@@ -2271,8 +2279,8 @@ next
               ultimately show "\<Union> (range A) \<in> ?\<xi>''"
                 by auto  
             qed
-            thus "non_decreasing_union_closed ?\<xi>''"
-              using ne_xi'' unfolding non_decreasing_union_closed_def by auto 
+            thus "non_decreasing_union_stable ?\<xi>''"
+              using ne_xi'' unfolding non_decreasing_union_stable_def by auto 
           next 
             have "\<forall>A. range A \<subseteq> ?\<xi>'' \<and> non_increasing A \<longrightarrow> \<Inter> (range A) \<in> ?\<xi>''"
             proof (rule ; rule ; erule conjE)
@@ -2282,7 +2290,7 @@ next
                 by auto
               hence "\<Inter> (range A) \<in> Mono \<Omega> M" 
                 using mono_mono 
-                unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
                 by auto 
               moreover have "\<forall>T\<in>Mono \<Omega> M. \<Inter> (range A) \<union> T \<in> Mono \<Omega> M"  
               proof 
@@ -2295,7 +2303,7 @@ next
                   using A_ni unfolding non_increasing_def by blast
                 ultimately have "\<Inter> (range ?B) \<in> Mono \<Omega> M" 
                   using mono_mono 
-                  unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+                  unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
                   by auto 
                 thus "\<Inter> (range A) \<union> T \<in> Mono \<Omega> M" 
                   by auto 
@@ -2303,10 +2311,11 @@ next
               ultimately show "\<Inter> (range A) \<in> ?\<xi>''"
                 by simp
             qed
-            thus "non_increasing_inter_closed ?\<xi>''"
-              using ne_xi'' unfolding non_increasing_inter_closed_def by auto 
+            thus "non_increasing_inter_stable ?\<xi>''"
+              using ne_xi'' unfolding non_increasing_inter_stable_def by auto 
           qed
-  
+
+        (* \<MM>(M) is finite-union-stable. *)
         ultimately show "Mono \<Omega> M = ?\<xi>''" 
           using Mono_def by blast 
       qed 
@@ -2323,7 +2332,7 @@ next
             by auto
           hence "\<Union> (range A) \<in> Mono \<Omega> M" 
             using mono_mono 
-            unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+            unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
              by simp 
           moreover have "\<Omega> - \<Union> (range A) \<in> Mono \<Omega> M" 
           proof - 
@@ -2336,7 +2345,7 @@ next
               by simp 
             ultimately show ?thesis
               using mono_mono 
-              unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+              unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
               by metis 
           qed
           ultimately show "\<Union> (range A) \<in> ?\<xi>'"
@@ -2350,7 +2359,7 @@ next
             by auto
           hence "\<Inter> (range A) \<in> Mono \<Omega> M" 
             using mono_mono 
-            unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_closed_def
+            unfolding monotone_class_def monotone_class_axioms_def non_increasing_inter_stable_def
              by simp 
           moreover have "\<Omega> - \<Inter> (range A) \<in> Mono \<Omega> M" 
           proof - 
@@ -2363,7 +2372,7 @@ next
               by simp 
             ultimately show ?thesis
               using mono_mono 
-              unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_closed_def
+              unfolding monotone_class_def monotone_class_axioms_def non_decreasing_union_stable_def
               by metis 
           qed
           ultimately show "\<Inter> (range A) \<in> ?\<xi>'"
@@ -2372,7 +2381,7 @@ next
         moreover have "?\<xi>' \<noteq> {}"
           using M_subseq algebra.compl_sets algebra.top assms by blast
         ultimately have "monotone_class \<Omega> ?\<xi>'"
-          using monotone_classI non_decreasing_union_closed_def non_increasing_inter_closed_def
+          using monotone_classI non_decreasing_union_stable_def non_increasing_inter_stable_def
           by (metis (no_types, lifting)) 
         moreover have "M \<subseteq> ?\<xi>'"
           using M_subseq algebra.compl_sets assms by auto 
@@ -2387,15 +2396,15 @@ next
     qed
 
     ultimately show ?thesis
-      using algebra_omega_c_fu_closed complement_closed_def finite_union_closed_def
-      by (metis Collect_empty_eq Collect_mem_eq) 
+      using complement_stable_def finite_union_stable_def unfolding algebra_omega_c_fu_stable
+      using algebra_omega_c_fu_stable assms by fastforce 
   qed
 
   ultimately have "sigma_algebra \<Omega> (Mono \<Omega> M)"
     by (simp add: algebra_is_sigma_iff_mono)
 
   moreover have "sigma_sets \<Omega> M = (LEAST N. M \<subseteq> N \<and> sigma_algebra \<Omega> N)" 
-    using sigma_sets_Least alg algebra_omega_c_fu_closed by metis
+    using sigma_sets_Least alg algebra_omega_c_fu_stable by metis
 
   ultimately show "sigma_sets \<Omega> M \<subseteq> Mono \<Omega> M"
     by (metis (no_types, lifting) Inter_greatest Mono_def mem_Collect_eq sigma_algebra.sigma_sets_subset)  
