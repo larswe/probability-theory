@@ -1,5 +1,5 @@
 theory Probability_Theory 
-  imports "HOL-Analysis.Sigma_Algebra" "HOL-Analysis.Infinite_Sum"
+  imports "HOL-Analysis.Sigma_Algebra"
 begin
 
 chapter "Basics from Measure Theory"
@@ -2624,7 +2624,7 @@ locale probability_space =
       and non_neg_prob: "\<forall>A\<in>\<F>. P A \<ge> 0"
       and sample_space_prob_1: "P \<Omega> = 1"
       and countable_additivity: "disjoint_family (A :: nat \<Rightarrow> 'a set) \<and> range A \<subseteq> \<F> \<longrightarrow> 
-                                 P (\<Union>(range A)) = infsum (\<lambda>n. P (A n)) (UNIV :: nat set)"
+                                 P (\<Union>(range A)) = infsum P (UNIV :: nat set)"
 begin
 
 definition measurable :: "'a set \<Rightarrow> bool"
@@ -2633,57 +2633,13 @@ definition measurable :: "'a set \<Rightarrow> bool"
 lemma measurable_additivity:
   assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
       and meas: "\<forall>n. measurable (A n)"
-    shows "P (\<Union>(range A)) = infsum (\<lambda>n. P (A n)) (UNIV :: nat set)"
+    shows "P (\<Union>(range A)) = infsum P (UNIV :: nat set)"
   using assms countable_additivity measurable_def by fast
 
 lemma measurable_complement: 
   assumes meas: "measurable S"
   shows "measurable (\<Omega> - S)"
   using sigma meas measurable_def complement_stable_def sigma_algebra_omega_c_cu_stable by metis 
-
-lemma measurable_bin_union: 
-  assumes meas_A: "measurable A"
-      and meas_B: "measurable B"
-    shows "measurable (A \<union> B)"
-  using sigma assms measurable_def 
-        sigma_algebra_omega_c_cu_stable cu_imp_fu_stable finite_union_stable_def by metis 
-
-lemma measurable_bin_inter: 
-  assumes meas_A: "measurable A"
-      and meas_B: "measurable B"
-    shows "measurable (A \<inter> B)"
-  using sigma assms measurable_def 
-        sigma_algebra_omega_c_ci_stable ci_imp_fi_stable finite_inter_stable_def by metis 
-
-lemma measurable_empty: 
-  shows "measurable {}"
-  using empty_in_sigma measurable_def sigma by auto
-
-lemma P_empty:
-  shows "P {} = 0" sorry 
-
-lemma binary_additivity:
-  assumes disj: "A \<inter> B = {}"
-      and meas_A: "measurable A"
-      and meas_B: "measurable B"
-    shows "P (A \<union> B) = P A + P B"
-proof - 
-  let ?A = "(\<lambda>n::nat. if n = 0 then A else if n = 1 then B else {})"
-  let ?P = "(\<lambda>n. P (?A n))"
-  have "disjoint_family ?A"
-    using disj unfolding disjoint_family_on_def by auto 
-  moreover have "\<forall>n. measurable (?A n)"
-    using disj meas_A meas_B measurable_bin_inter by fastforce 
-  ultimately have "P (\<Union>(range ?A)) = infsum ?P UNIV"
-    using measurable_additivity by presburger 
-  moreover have "\<Union>(range ?A) = A \<union> B" sorry 
-  ultimately have "P (A \<union> B) = infsum ?P UNIV"
-    by metis 
-  moreover have "infsum ?P UNIV = P A + P B"
-    using P_empty sorry 
-  ultimately show ?thesis 
-    by auto 
-qed
 
 lemma probability_complement: 
   assumes meas: "measurable S"
