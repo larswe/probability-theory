@@ -2655,12 +2655,63 @@ lemma measurable_bin_inter:
   using sigma assms measurable_def 
         sigma_algebra_omega_c_ci_stable ci_imp_fi_stable finite_inter_stable_def by metis 
 
+(* TODO, obviously *)
+lemma infsum_singleton: 
+  shows "infsum f {x} = f x"
+  by simp 
+
 lemma measurable_empty: 
   shows "measurable {}"
   using empty_in_sigma measurable_def sigma by auto
 
 lemma P_empty:
-  shows "P {} = 0" sorry 
+  shows "P {} = 0" 
+proof - 
+  let ?A = "(\<lambda>n::nat. if n = (0::nat) then \<Omega> else {})"
+  let ?P = "(\<lambda>n. P (?A n))"
+  have "disjoint_family ?A"
+    unfolding disjoint_family_on_def by auto 
+  moreover have "\<forall>n. measurable (?A n)"
+    using measurable_complement measurable_empty by fastforce
+  ultimately have "P (\<Union>(range ?A)) = infsum ?P UNIV"
+    using measurable_additivity by presburger 
+  moreover have "\<Union>(range ?A) = \<Omega>"
+    by simp 
+  ultimately have "infsum ?P UNIV = 1"
+    using sample_space_prob_1 by auto 
+  moreover have P_0_1: "?P 0 = 1"
+    by (simp add: sample_space_prob_1)
+  moreover have "\<forall>n. (n \<noteq> 0) \<longrightarrow> (?P n \<ge> 0)"
+    using empty_in_sigma non_neg_prob sigma by auto
+  moreover have P_summable_UNIV: "?P summable_on UNIV"
+    using calculation(1) infsum_not_exists by fastforce
+
+  ultimately have "infsum ?P (UNIV - {0}) + infsum ?P {0} = 1"
+    by (simp add: infsum_Diff) 
+
+  hence non_0_sum_0: "infsum ?P (UNIV - {0}) = 1 - infsum ?P {0}" 
+    by auto 
+  moreover have "infsum ?P {0} = ?P 0"
+    by simp 
+  ultimately have non_0_sum_0: "infsum ?P (UNIV - {0}) = 0"
+    using P_0_1 by linarith
+   
+  have "\<forall>n. (n \<in> (UNIV - {0})) \<longrightarrow> (?P n = 0)"
+  proof (rule ; rule) 
+    let ?S = "(UNIV - {0}) :: nat set"
+    fix n
+    assume "n \<in> ?S"
+    moreover have "has_sum ?P ?S 0"
+      using non_0_sum_0 Diff_subset P_summable_UNIV has_sum_infsum summable_on_subset_banach by metis 
+    moreover have "(\<And>x. x \<in> ?S \<Longrightarrow> 0 \<le> ?P x)"
+      using empty_in_sigma non_neg_prob sigma by auto
+    ultimately show "?P n = 0"
+      using nonneg_has_sum_le_0D by (smt (verit, best)) 
+  qed 
+  
+  thus ?thesis
+    by auto
+qed
 
 lemma binary_additivity:
   assumes disj: "A \<inter> B = {}"
