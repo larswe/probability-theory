@@ -2702,7 +2702,7 @@ locale probability_space =
       and non_neg_prob: "\<forall>A\<in>\<F>. P A \<ge> 0"
       and sample_space_prob_1: "P \<Omega> = 1"
       and countable_additivity: "disjoint_family (A :: nat \<Rightarrow> 'a set) \<and> range A \<subseteq> \<F> \<longrightarrow> 
-                                 P (\<Union>(range A)) = infsum (\<lambda>n. P (A n)) (UNIV :: nat set)"
+                                 P (\<Union>(range A)) = infsum (\<lambda>n. P (A n)) UNIV"
 begin
 
 section "Moving towards an intuitive notion of probability"
@@ -2917,7 +2917,7 @@ lemma finite_additivity':
   assumes disj: "disjoint_family_on A S"
       and meas_As: "\<forall>n\<in>S. measurable (A n)"
       and fin: "finite S"
-    shows "P (\<Union>n\<in>S. A n) = sum (P \<circ> A) S" 
+    shows "P (\<Union>n\<in>S. A n) = sum (\<lambda>n. P (A n)) S" 
 proof - 
   have "P (\<Union>n\<in>S. A n) = sum P (A ` S)"
     by (simp add: disj fin finite_additivity meas_As)
@@ -3014,6 +3014,8 @@ qed
 
 section "Limits and Completeness"
 
+(* TODO: The following 2 lemmas probably/maybe don't actually help. *)
+
 lemma sum_infsum_e_N: 
   fixes Q :: "nat \<Rightarrow> real"
   assumes smmble: "Q summable_on UNIV"
@@ -3052,32 +3054,33 @@ theorem non_dec_prob_limit:
 proof -
   let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
 
-  have meas_Un: "measurable (\<Union>n. A n)"
-    by (simp add: meas_As measurable_cu)
   have meas_Bs: "\<forall>N. \<forall>n\<in>{..N}. measurable (?B n)"
       by (simp add: meas_As measurable_sd) 
   have disj_B: "disjoint_family ?B"
     by (simp add: non_dec non_dec_to_disj)
-  have AN_UnB: "\<forall>N. A N = \<Union> (?B ` {..N})"
-    using non_dec non_dec_is_disj_fu by auto 
-  have UnB_UnA: "(\<Union>n. ?B n) = (\<Union>n. A n)"
-    by (simp add: non_dec non_dec_to_disj_same_cu)
 
-  have "\<forall>N. P (A N) = P (\<Union> (?B ` {..N}))"
-    by (metis AN_UnB)
+  have "\<forall>N. A N = \<Union> (?B ` {..N})"
+    using non_dec non_dec_is_disj_fu by auto 
+  hence "\<forall>N. P (A N) = P (\<Union> (?B ` {..N}))"
+    by metis
   moreover have "\<forall>N. P (\<Union> (?B ` {..N})) = sum P (?B ` {..N})"
   proof 
     fix N
     have "disjoint_family_on ?B {..N}"  
-      using non_dec non_dec_to_disj unfolding disjoint_family_on_def by blast 
+      using disj_B unfolding disjoint_family_on_def by blast 
     thus "P (\<Union> (?B ` {..N})) = sum P (?B ` {..N})" 
       using finite_additivity meas_Bs by blast  
   qed 
   ultimately have "\<forall>N. P (A N) = sum P (?B ` {..N})"  
     by auto 
 
-  (* TODO - Sort out mess, *)
-  moreover have "((\<lambda>N. sum P (?B ` {..N})) \<longlongrightarrow> (\<Sum>\<^sub>\<infinity>n. P (?B n))) at_top" sorry 
+  (* TODO - Sort this out. 
+            Form below is backed by locale header. (and partial_sum_LIM_infsum, I think.)
+            Form above is backed by finite additivity. 
+            Maybe the above is stupid. 
+
+            I hope I just need to change the form of finite additivity to make this all work. *)
+  moreover have "((\<lambda>N. sum P (?B ` {..N})) \<longlongrightarrow> infsum (\<lambda>n. P (?B n)) UNIV) at_top" sorry 
 
   ultimately have "(\<lambda>N. P (A N)) \<longlonglongrightarrow> (\<Sum>\<^sub>\<infinity>n. P (?B n))" 
     by simp 
