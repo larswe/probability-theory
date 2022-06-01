@@ -276,9 +276,24 @@ proof (rule ; rule ; rule)
   qed 
 qed
 
-lemma non_dec_to_disj_same_fu: 
+lemma non_dec_N_is_fu: 
   assumes non_dec: "non_decreasing A"
-  shows "\<forall>N. (\<Union>n\<in>{..N}. A n) = (\<Union>n\<in>{..N}. (\<lambda>n. if n = 0 then A 0 else A n - A (n - 1)) n)"
+  shows "(\<Union>n\<in>{..N}. A n) = A N"
+proof (rule ; rule)
+  fix x 
+  assume "x \<in> \<Union> (A ` {..N})"
+  thus "x \<in> A N"
+    by (metis UN_iff atMost_iff non_dec non_decreasing_stay_in)
+next 
+  fix x 
+  assume "x \<in> A N" 
+  thus "x \<in> \<Union> (A ` {..N})"
+    by auto 
+qed
+
+lemma non_dec_is_disj_fu: 
+  assumes non_dec: "non_decreasing A"
+  shows "\<forall>N. A N = (\<Union>n\<in>{..N}. (\<lambda>n. if n = 0 then A 0 else A n - A (n - 1)) n)"
 proof - 
   let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
   have "\<forall>N. (\<Union>n\<in>{..N}. A n) \<subseteq> (\<Union>n\<in>{..N}. ?B n)"
@@ -313,8 +328,11 @@ proof -
     thus "x \<in> \<Union> (?B ` {..N})"
       using n_choice by blast 
   qed 
-  thus ?thesis 
+  
+  hence "\<forall>N. \<Union> (A ` {..N}) = (\<Union>n\<le>N. if n = 0 then A 0 else A n - A (n - 1))"
     by auto 
+  thus ?thesis 
+    using non_dec non_dec_N_is_fu by metis 
 qed
 
 lemma non_dec_to_disj_same_cu: 
@@ -2712,6 +2730,13 @@ lemma measurable_fu:
   using sigma assms measurable_def 
         sigma_algebra_omega_c_cu_stable cu_imp_fu_stable finite_union_stable_def by metis 
 
+lemma measurable_fu_ind: 
+  assumes meas: "\<forall>S\<in>M. measurable S"
+      and fin: "finite M"
+    shows "measurable (\<Union>S\<in>M. S)"
+  using sigma assms sigma_algebra_omega_c_cu_stable cu_imp_fu_stable fu_stable_finite Union_empty 
+        empty_in_sigma image_ident measurable_def by metis 
+
 lemma measurable_cu:
   assumes meas: "\<forall>n::nat. measurable (A n)"
   shows "measurable (\<Union>(range A))"
@@ -2732,6 +2757,14 @@ lemma measurable_fi:
     shows "measurable (A \<inter> B)"
   using sigma assms measurable_def 
         sigma_algebra_omega_c_ci_stable ci_imp_fi_stable finite_inter_stable_def by metis 
+
+lemma measurable_fi_ind: 
+  assumes meas: "\<forall>S\<in>M. measurable S"
+      and fin: "finite M"
+      and non_empty: "M \<noteq> {}"
+    shows "measurable (\<Inter>S\<in>M. S)"
+  using sigma assms sigma_algebra_omega_c_ci_stable ci_imp_fi_stable fi_stable_finite measurable_def
+    by metis 
 
 lemma measurable_ci:
   assumes meas: "\<forall>n::nat. measurable (A n)"
@@ -2814,7 +2847,7 @@ proof -
     by auto
 qed
 
-lemma finite_additivity:
+lemma binary_additivity:
   assumes disj: "A \<inter> B = {}"
       and meas_A: "measurable A"
       and meas_B: "measurable B"
@@ -2840,6 +2873,60 @@ proof -
     by auto 
 qed
 
+lemma finite_additivity:
+  assumes disj: "disjoint_family_on A S"
+      and meas_As: "\<forall>n\<in>S. measurable (A n)"
+      and fin: "finite S"
+    shows "P (\<Union>n\<in>S. A n) = sum P (A ` S)" 
+  using fin meas_As disj 
+proof (induction S rule: finite_induct)
+  case empty
+  hence "P (\<Union> (A ` {})) = sum P {}"
+    by (simp add: P_empty)
+  thus ?case
+    by auto 
+next
+  case (insert x F) 
+  have "P (\<Union> (A ` insert x F)) = P ((\<Union> (A ` F)) \<union> A x)"
+    by (simp add: Un_commute)
+  moreover have "finite {T. \<exists>n\<in>F. T = A n} \<and> (\<forall>n\<in>F. measurable (A n))"
+    by (simp add: insert.hyps(1) insert.prems(1)) 
+  hence "measurable (\<Union>S\<in>{T. \<exists>n\<in>F. T = A n}. S)"
+    by (smt (verit, best) measurable_fu_ind mem_Collect_eq)
+  hence "measurable (\<Union> (A ` F))"
+    by (smt (verit) Collect_cong UNION_eq mem_Collect_eq) 
+  moreover have "measurable (A x)"
+    by (simp add: insert.prems(1)) 
+  moreover have "(\<Union> (A ` F)) \<inter> (A x) = {}" 
+    using insert.prems(2) insert.hyps(2) unfolding disjoint_family_on_def by fastforce 
+  ultimately have "P (\<Union> (A ` insert x F)) = P (\<Union> (A ` F)) + P (A x)"
+    using binary_additivity by fastforce
+  moreover have meas_F: "\<forall>n\<in>F. measurable (A n)"
+    by (simp add: insert.prems(1))  
+  moreover have disj_F: "disjoint_family_on A F"
+    by (metis disjoint_family_on_insert insert.hyps(2) insert.prems(2))  
+  ultimately have "P (\<Union> (A ` insert x F)) = sum P (A ` F) + P (A x)"
+    using insert.IH by auto 
+  thus ?case
+    by (smt (verit) meas_F disj_F finite_imageI image_insert insert.IH insert.hyps(1) insert_absorb 
+                    sum.insert)  
+qed
+
+(* TODO: Probably delete, this isn't it. *)
+lemma finite_additivity':
+  assumes disj: "disjoint_family_on A S"
+      and meas_As: "\<forall>n\<in>S. measurable (A n)"
+      and fin: "finite S"
+    shows "P (\<Union>n\<in>S. A n) = sum (P \<circ> A) S" 
+proof - 
+  have "P (\<Union>n\<in>S. A n) = sum P (A ` S)"
+    by (simp add: disj fin finite_additivity meas_As)
+  moreover have "sum (P \<circ> A) S = sum P (A ` S)" sorry
+
+  ultimately show ?thesis 
+    by simp 
+qed
+
 lemma probability_set_diff: 
   assumes meas_S: "measurable S"
       and meas_T: "measurable T"
@@ -2850,7 +2937,7 @@ proof -
   moreover have "measurable (S - T)"
     by (simp add: meas_S meas_T measurable_sd)
   ultimately have "P (S - T) + P (S \<inter> T) = P S"
-    by (metis Int_Diff_disjoint Int_Diff_Un add.commute finite_additivity)
+    by (metis Int_Diff_disjoint Int_Diff_Un add.commute binary_additivity)
   thus ?thesis
     by simp 
 qed
@@ -2882,14 +2969,14 @@ proof -
   have "measurable (B - A)"
     by (simp add: meas_A meas_B measurable_sd) 
   hence "P (A \<union> B) = P A + P (B - A)"
-    using assms finite_additivity Diff_disjoint Un_Diff_cancel by metis 
+    using assms binary_additivity Diff_disjoint Un_Diff_cancel by metis 
   moreover have "P (B - A) = P B - P (A \<inter> B)"
     by (simp add: Int_commute meas_A meas_B probability_set_diff)
   ultimately show ?thesis 
     by simp 
 qed
 
-lemma finite_subadditivty:
+lemma binary_subadditivty:
   assumes meas_A: "measurable A"
       and meas_B: "measurable B"
   shows "P (A \<union> B) \<le> P A + P B"
@@ -2963,19 +3050,40 @@ theorem non_dec_prob_limit:
       and non_dec: "non_decreasing A"
     shows "(\<lambda>n. P (A n)) \<longlonglongrightarrow> P (\<Union>n. A n)"
 proof -
-  let ?S = "(\<Union>n. A n)"
-  have meas_S: "measurable ?S"
-    by (simp add: meas_As measurable_cu)
-
   let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
-  have "disjoint_family ?B"
+
+  have meas_Un: "measurable (\<Union>n. A n)"
+    by (simp add: meas_As measurable_cu)
+  have disj_B: "disjoint_family ?B"
     by (simp add: non_dec non_dec_to_disj)
-  moreover have "\<forall>N. (\<Union>n\<in>{..N}. A n) = (\<Union>n\<in>{..N}. ?B n)"
-    by (simp add: non_dec non_dec_to_disj_same_fu) 
-  moreover have "(\<Union>n. ?B n) = ?S"
+  have AN_UnB: "\<forall>N. A N = \<Union> (?B ` {..N})"
+    using non_dec non_dec_is_disj_fu by auto 
+  have UnB_UnA: "(\<Union>n. ?B n) = (\<Union>n. A n)"
     by (simp add: non_dec non_dec_to_disj_same_cu)
 
-  ultimately show ?thesis sorry 
+  have "\<forall>N. P (A N) = P (\<Union> (?B ` {..N}))"
+    by (metis AN_UnB)
+  moreover have "\<forall>N. P (\<Union> (?B ` {..N})) = sum P (?B ` {..N})"
+  proof 
+    fix N
+    have "disjoint_family_on ?B {..N}"  
+      using non_dec non_dec_to_disj unfolding disjoint_family_on_def by blast 
+    moreover have "\<forall>n\<in>{..N}. measurable (?B n)"
+      by (simp add: meas_As measurable_sd)  
+    ultimately show "P (\<Union> (?B ` {..N})) = sum P (?B ` {..N})" 
+      using finite_additivity by blast  
+  qed 
+  ultimately have "\<forall>N. P (A N) = sum P (?B ` {..N})"  
+    by auto 
+
+  (* TODO - Sort out mess, *)
+  moreover have "P summable_on (?B ` UNIV)" sorry 
+  hence "((\<lambda>N. sum P (?B ` {..N})) \<longlongrightarrow> infsum P (?B ` UNIV)) at_top" sorry 
+
+  ultimately have "(\<lambda>N. P (A N)) \<longlonglongrightarrow> infsum P (range ?B)" 
+    by simp 
+
+  thus ?thesis sorry 
 qed
 
 end
