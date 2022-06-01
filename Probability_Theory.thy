@@ -246,6 +246,98 @@ lemma non_decreasing_stay_in:
     shows "\<forall>m\<ge>n. x \<in> A m"
   using base non_dec non_decreasing_multistep by auto
 
+lemma non_dec_to_disj: 
+  assumes non_dec: "non_decreasing A"
+  shows "disjoint_family (\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
+  unfolding disjoint_family_on_def 
+proof (rule ; rule ; rule) 
+  let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n-1))"
+  fix m n :: nat 
+  assume "m \<noteq> n" 
+  then consider (M) "m > n" | (N) "n > m"
+    using nat_neq_iff by blast
+  thus "?B m \<inter> ?B n = {}"
+  proof cases
+    case M
+    hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> A k"
+      using non_dec non_decreasing_stay_in by fastforce
+    hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> ?B k"
+      using Diff_iff by metis 
+    then show ?thesis
+      using M by blast
+   next
+     case N
+     hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> A k"
+       using non_dec non_decreasing_stay_in by fastforce 
+     hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> ?B k"
+       by (metis Diff_iff)
+     then show ?thesis
+       using N by blast
+  qed 
+qed
+
+lemma non_dec_to_disj_same_fu: 
+  assumes non_dec: "non_decreasing A"
+  shows "\<forall>N. (\<Union>n\<in>{..N}. A n) = (\<Union>n\<in>{..N}. (\<lambda>n. if n = 0 then A 0 else A n - A (n - 1)) n)"
+proof - 
+  let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
+  have "\<forall>N. (\<Union>n\<in>{..N}. A n) \<subseteq> (\<Union>n\<in>{..N}. ?B n)"
+  proof (rule ; rule) 
+    fix N x 
+    obtain P where P_fun: "P = (\<lambda>n. n \<in> {..N} \<and> x \<in> A n)"
+      by auto 
+
+    assume "x \<in> \<Union> (A ` {..N})"
+    hence "\<exists>n. P n"
+      using P_fun by auto 
+    hence "\<exists>n. P n \<and> (\<forall>m<n. \<not> P m)"
+      using exists_least_iff by auto 
+    then obtain n where n_choice: "n \<in> {..N} \<and> x \<in> A n \<and> (\<forall>m\<in>{..N}. m < n \<longrightarrow> x \<notin> A m)"
+      using P_fun by auto 
+
+    consider (0) "n = 0" | (Suc) "n = Suc (n - 1)"
+      by linarith 
+    hence "x \<in> A n \<and> (n = 0 \<or> x \<notin> A (n - 1))"
+    proof cases
+      case 0
+      then show ?thesis
+        using n_choice by auto 
+    next
+      case Suc
+      then show ?thesis
+        using n_choice by auto 
+    qed
+
+    hence "x \<in> ?B n"
+      by auto
+    thus "x \<in> \<Union> (?B ` {..N})"
+      using n_choice by blast 
+  qed 
+  thus ?thesis 
+    by auto 
+qed
+
+lemma non_dec_to_disj_same_cu: 
+  assumes non_dec: "non_decreasing A"
+  shows "(\<Union>n. A n) = (\<Union>n. (\<lambda>n. if n = 0 then A 0 else A n - A (n - 1)) n)"
+proof - 
+  let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
+  have "\<Union> (range A) \<subseteq> (\<Union>n. ?B n)"
+  proof 
+    fix x 
+    assume "x \<in> \<Union> (range A)"
+    hence "\<exists>n. n \<in> {n'. x \<in> A n'}"
+      by simp 
+    then obtain n where "n \<in> {n'. x \<in> A n'} \<and> (\<forall>m\<in>{n'. x \<in> A n'}. n \<le> m)"
+      using min_nat_elem by meson
+    hence "x \<in> ?B n"
+      by fastforce 
+    thus "x \<in> (\<Union>i::nat. ?B i)"
+      by fast 
+  qed
+  thus ?thesis by auto 
+qed
+
 text "{A n, n \<ge> 0} is non-increasing:"
 definition non_increasing :: "(nat \<Rightarrow> 'a set) \<Rightarrow> bool"
   where "non_increasing A \<equiv> \<forall>n. A (n + 1) \<subseteq> A n"
@@ -1179,69 +1271,32 @@ proof -
     let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n-1))"
 
     have "disjoint_family ?B"
-      unfolding disjoint_family_on_def
-    proof (rule; rule; rule)
-      fix m n :: nat 
-      assume "m \<noteq> n" 
-      then consider (M) "m > n" | (N) "n > m"
-        using nat_neq_iff by blast
-       thus "?B m \<inter> ?B n = {}"
-        proof cases
-          case M
-          hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> A k"
-            using A_is_nondecreasing_within_M non_decreasing_stay_in by fastforce
-          hence "\<forall>x\<in>?B m. \<forall>k<m. x \<notin> ?B k"
-            using Diff_iff by metis 
-          then show ?thesis
-            using M by blast
-        next
-          case N
-          hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> A k"
-            using A_is_nondecreasing_within_M non_decreasing_stay_in by fastforce 
-          hence "\<forall>x\<in>?B n. \<forall>k<n. x \<notin> ?B k"
-            by (metis Diff_iff)
-          then show ?thesis
-            using N by blast
-        qed 
-      qed
+      by (simp add: A_is_nondecreasing_within_M non_dec_to_disj)
        
-      moreover have sd_stable: "set_diff_stable M"
-        using assms dcu_c_empty_imp_sd_stable by auto
-      hence "\<forall>n. ?B n \<in> M" 
-      proof - 
-        have "\<forall>n. ?B n = A 0 \<or> ?B n = A n - A (n-1)"
-          by simp
-        moreover have "\<forall>n. A n \<in> M"
-          using A_is_nondecreasing_within_M by blast
-        ultimately show "\<forall>n. ?B n \<in> M"
-          using sd_stable unfolding set_diff_stable_def
-          by (simp add: A_is_nondecreasing_within_M non_decreasing_multistep) 
-      qed
-      hence "range ?B \<subseteq> M"
-        by blast
+    moreover have sd_stable: "set_diff_stable M"
+      using assms dcu_c_empty_imp_sd_stable by auto
+    hence "\<forall>n. ?B n \<in> M" 
+    proof - 
+      have "\<forall>n. ?B n = A 0 \<or> ?B n = A n - A (n-1)"
+        by simp
+      moreover have "\<forall>n. A n \<in> M"
+        using A_is_nondecreasing_within_M by blast
+      ultimately show "\<forall>n. ?B n \<in> M"
+        using sd_stable unfolding set_diff_stable_def
+        by (simp add: A_is_nondecreasing_within_M non_decreasing_multistep) 
+    qed
+    hence "range ?B \<subseteq> M"
+      by blast
         
-      ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
-        using dcu_stable unfolding disj_countable_union_stable_def by blast
+    ultimately have "((\<Union>i::nat. ?B i) \<in> M)"
+      using dcu_stable unfolding disj_countable_union_stable_def by blast
 
-      moreover have "\<Union> (range A) \<subseteq> (\<Union>i. ?B i)"
-      proof 
-        fix x 
-        assume "x \<in> \<Union> (range A)"
-        hence "\<exists>n. n \<in> {n'. x \<in> A n'}"
-          by simp 
-        then obtain n where "n \<in> {n'. x \<in> A n'} \<and> (\<forall>m\<in>{n'. x \<in> A n'}. n \<le> m)"
-          using min_nat_elem by meson
-        hence "x \<in> ?B n"
-          by fastforce 
-        thus "x \<in> (\<Union>i::nat. ?B i)"
-          by fast 
-      qed
-      hence "(\<Union>i::nat. A i) = (\<Union>i::nat. ?B i)" 
-        by auto 
+    moreover have "\<Union> (range A) = (\<Union>i. ?B i)"
+      by (simp add: A_is_nondecreasing_within_M non_dec_to_disj_same_cu)
 
-      ultimately show "((\<Union>i::nat. A i) \<in> M)"
-        by simp 
-    qed 
+    ultimately show "((\<Union>i. A i) \<in> M)"
+      by simp 
+  qed 
 
   ultimately show ?thesis
     by (simp add: non_decreasing_union_stable_def)
@@ -2634,7 +2689,7 @@ begin
 
 section "Moving towards an intuitive notion of probability"
 
-subsubsection "Measurable Sets"
+subsection "Measurable Sets"
 
 definition measurable :: "'a set \<Rightarrow> bool"
   where "measurable S = (S \<in> \<F>)"
@@ -2658,11 +2713,18 @@ lemma measurable_fu:
         sigma_algebra_omega_c_cu_stable cu_imp_fu_stable finite_union_stable_def by metis 
 
 lemma measurable_cu:
-  assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
-      and meas: "\<forall>n. measurable (A n)"
-    shows "measurable (\<Union>(range A))"
-  using sigma assms measurable_def sigma_algebra_omega_c_cu_stable countable_union_stable_def
-        image_subset_iff by metis 
+  assumes meas: "\<forall>n::nat. measurable (A n)"
+  shows "measurable (\<Union>(range A))"
+proof - 
+  have "range A \<subseteq> \<F>"
+    by (meson image_subset_iff measurable_def meas)  
+  moreover have "countable_union_stable \<F>"
+    using sigma sigma_algebra_omega_c_cu_stable by auto
+  ultimately have "(\<Union>(range A)) \<in> \<F>"
+    unfolding countable_union_stable_def by auto 
+  thus ?thesis 
+    by (simp add: measurable_def) 
+qed
 
 lemma measurable_fi: 
   assumes meas_A: "measurable A"
@@ -2672,11 +2734,18 @@ lemma measurable_fi:
         sigma_algebra_omega_c_ci_stable ci_imp_fi_stable finite_inter_stable_def by metis 
 
 lemma measurable_ci:
-  assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
-      and meas: "\<forall>n. measurable (A n)"
+  assumes meas: "\<forall>n::nat. measurable (A n)"
     shows "measurable (\<Inter>(range A))"
-  using sigma assms measurable_def sigma_algebra_omega_c_ci_stable countable_inter_stable_def
-        image_subset_iff by metis 
+proof - 
+  have "range A \<subseteq> \<F>"
+    by (meson image_subset_iff measurable_def meas)  
+  moreover have "countable_inter_stable \<F>"
+    using sigma sigma_algebra_omega_c_ci_stable by auto
+  ultimately have "(\<Inter>(range A)) \<in> \<F>"
+    unfolding countable_inter_stable_def by auto 
+  thus ?thesis 
+    by (simp add: measurable_def) 
+qed 
 
 lemma measurable_sd: 
   assumes meas_S: "measurable S"
@@ -2700,7 +2769,10 @@ lemma measurable_omega:
   shows "measurable \<Omega>"
   using measurable_c measurable_empty by fastforce
 
-subsubsection "Probabilities of sets and their combinations"
+subsection "Probabilities of sets and their combinations"
+
+text "Departing from the axioms (only!) one can now derive various relations between probabilities
+of unions, subsets, complements and so on. Following is a list of some of them."
 
 lemma P_empty:
   shows "P {} = 0" 
@@ -2822,6 +2894,89 @@ lemma finite_subadditivty:
       and meas_B: "measurable B"
   shows "P (A \<union> B) \<le> P A + P B"
   using binary_incl_excl measurable_def meas_A meas_B measurable_fi non_neg_prob by auto  
+
+lemma probability_subseq: 
+  assumes meas_S: "measurable S"
+      and meas_T: "measurable T"
+      and subseq: "S \<subseteq> T"
+    shows "P S \<le> P T"
+proof - 
+  have meas_sd: "measurable (T - S)"
+    by (simp add: meas_S meas_T measurable_sd)
+  hence "P S + P (T - S) = P T"
+    by (simp add: assms probability_subset_diff)
+  thus ?thesis 
+    using meas_sd measurable_def non_neg_prob by auto 
+qed 
+
+lemma probability_Un_In_c_1: 
+  assumes meas_As: "\<forall>n::nat. measurable (A n)"
+  shows "P (\<Union>n. A n) + P (\<Inter>n. \<Omega> - A n) = 1"
+proof - 
+  have "measurable (\<Union>n. A n)"
+    by (simp add: meas_As measurable_cu)
+  moreover have "\<forall>n. measurable (\<Omega> - A n)"
+    by (simp add: meas_As measurable_c)
+  hence "measurable (\<Inter>n. \<Omega> - A n)"
+    by (meson measurable_ci)
+  moreover have "(\<Inter>n. \<Omega> - A n) = \<Omega> - (\<Union>n. A n)"
+    by auto
+  ultimately show ?thesis
+    by (simp add: probability_complement)
+qed
+
+section "Limits and Completeness"
+
+lemma sum_infsum_e_N: 
+  fixes Q :: "nat \<Rightarrow> real"
+  assumes smmble: "Q summable_on UNIV"
+  shows "\<forall>e>0. \<exists>N. abs (sum Q {..N} - infsum Q UNIV) < e"
+proof - 
+  have "(sum Q \<longlongrightarrow> infsum Q UNIV) (finite_subsets_at_top UNIV)"
+    using infsum_tendsto smmble by blast
+  hence "filterlim (sum Q) (nhds (infsum Q UNIV)) (finite_subsets_at_top UNIV)"
+    by simp  
+  hence "\<forall>e>0. eventually (\<lambda>S. abs (sum Q S - infsum Q UNIV) < e) (finite_subsets_at_top UNIV)"
+    by (metis LIM_zero_iff order_tendsto_iff tendsto_rabs_zero_iff)
+  hence "\<forall>e>0. \<exists>X. finite X \<and> (\<forall>Y. finite Y \<and> X \<subseteq> Y \<longrightarrow> abs (sum Q Y - infsum Q UNIV) < e)"
+    by (simp add: eventually_finite_subsets_at_top)
+  thus ?thesis
+    by (meson finite_atMost finite_nat_iff_bounded_le)
+qed
+
+lemma partial_sum_LIM_infsum: 
+  fixes Q :: "nat \<Rightarrow> real"
+  assumes smmble: "Q summable_on UNIV"
+  shows "(\<lambda>N. sum Q {..N}) \<longlonglongrightarrow> infsum Q UNIV"
+proof - 
+  have "(sum Q \<longlongrightarrow> infsum Q UNIV) (finite_subsets_at_top UNIV)"
+    using infsum_tendsto smmble by blast
+  hence  "((\<lambda>N. sum Q {..N}) \<longlongrightarrow> infsum Q UNIV) at_top"
+    using filterlim_atMost_at_top filterlim_compose by blast
+  thus ?thesis
+    by simp
+qed
+
+theorem non_dec_prob_limit: 
+  fixes A :: "nat \<Rightarrow> 'a set"
+  assumes meas_As: "\<forall>n. measurable (A n)"
+      and non_dec: "non_decreasing A"
+    shows "(\<lambda>n. P (A n)) \<longlonglongrightarrow> P (\<Union>n. A n)"
+proof -
+  let ?S = "(\<Union>n. A n)"
+  have meas_S: "measurable ?S"
+    by (simp add: meas_As measurable_cu)
+
+  let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
+  have "disjoint_family ?B"
+    by (simp add: non_dec non_dec_to_disj)
+  moreover have "\<forall>N. (\<Union>n\<in>{..N}. A n) = (\<Union>n\<in>{..N}. ?B n)"
+    by (simp add: non_dec non_dec_to_disj_same_fu) 
+  moreover have "(\<Union>n. ?B n) = ?S"
+    by (simp add: non_dec non_dec_to_disj_same_cu)
+
+  ultimately show ?thesis sorry 
+qed
 
 end
 
