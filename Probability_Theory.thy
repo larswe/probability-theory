@@ -1384,6 +1384,11 @@ next
     by (simp add: sigma_algebra_omega_c_cu_stable)
 qed
 
+lemma sigma_sd_stable: 
+  assumes sa: "sigma_algebra \<Omega> M"
+  shows "set_diff_stable M"
+  by (meson c_fu_omega_imp_sd_stable cu_imp_fu_stable sa sigma_algebra_omega_c_cu_stable)
+
 lemma empty_in_sigma: 
   assumes sa: "sigma_algebra \<Omega> M"
   shows "{} \<in> M"
@@ -2627,6 +2632,10 @@ locale probability_space =
                                  P (\<Union>(range A)) = infsum (\<lambda>n. P (A n)) (UNIV :: nat set)"
 begin
 
+section "Moving towards an intuitive notion of probability"
+
+subsubsection "Measurable Sets"
+
 definition measurable :: "'a set \<Rightarrow> bool"
   where "measurable S = (S \<in> \<F>)"
 
@@ -2669,9 +2678,29 @@ lemma measurable_ci:
   using sigma assms measurable_def sigma_algebra_omega_c_ci_stable countable_inter_stable_def
         image_subset_iff by metis 
 
+lemma measurable_sd: 
+  assumes meas_S: "measurable S"
+      and meas_T: "measurable T"
+    shows "measurable (S - T)"
+  unfolding measurable_def 
+proof - 
+  have "(S \<inter> T) \<in> \<F>"
+    using meas_S meas_T measurable_fi measurable_def by auto 
+  hence "S - (S \<inter> T) \<in> \<F>"
+    using meas_S sigma sigma_sd_stable unfolding set_diff_stable_def measurable_def by blast 
+  thus "S - T \<in> \<F>"
+    by (metis Diff_Int_distrib Int_Diff Int_absorb) 
+qed
+
 lemma measurable_empty: 
   shows "measurable {}"
   using empty_in_sigma measurable_def sigma by auto
+
+lemma measurable_omega: 
+  shows "measurable \<Omega>"
+  using measurable_c measurable_empty by fastforce
+
+subsubsection "Probabilities of sets and their combinations"
 
 lemma P_empty:
   shows "P {} = 0" 
@@ -2706,7 +2735,7 @@ proof -
     moreover have "(\<And>x. x \<in> ?S \<Longrightarrow> 0 \<le> ?P x)"
       using empty_in_sigma non_neg_prob sigma by auto
     ultimately show "?P n = 0"
-      using nonneg_has_sum_le_0D by (smt (verit, best))
+      using nonneg_has_sum_le_0D by smt 
   qed 
   
   thus ?thesis
@@ -2739,24 +2768,60 @@ proof -
     by auto 
 qed
 
+lemma probability_set_diff: 
+  assumes meas_S: "measurable S"
+      and meas_T: "measurable T"
+    shows "P (S - T) = P S - P (S \<inter> T)"
+proof - 
+  have "measurable (S \<inter> T)"
+    by (simp add: meas_S meas_T measurable_fi)
+  moreover have "measurable (S - T)"
+    by (simp add: meas_S meas_T measurable_sd)
+  ultimately have "P (S - T) + P (S \<inter> T) = P S"
+    by (metis Int_Diff_disjoint Int_Diff_Un add.commute finite_additivity)
+  thus ?thesis
+    by simp 
+qed
+
+lemma probability_subset_diff: 
+  assumes meas_S: "measurable S"
+      and meas_T: "measurable T"
+      and subseq: "T \<subseteq> S"
+    shows "P (S - T) = P S - P T"
+  by (metis inf.absorb_iff2 meas_S meas_T probability_set_diff subseq)
+
 lemma probability_complement: 
   assumes meas: "measurable S"
   shows "P (\<Omega> - S) = 1 - P S"
 proof - 
-  have "measurable (\<Omega> - S)"
-    by (simp add: meas measurable_c)
-  hence "P ((\<Omega> - S) \<union> S) = P (\<Omega> - S) + P S"
-    by (metis Diff_disjoint Int_commute finite_additivity meas) 
-  moreover have "(\<Omega> - S) \<union> S = \<Omega>"
-    using \<F>_Pow measurable_def meas by auto 
-  ultimately show?thesis 
-    by (simp add: sample_space_prob_1)
-qed 
+  have "measurable \<Omega>"
+    by (simp add: measurable_omega)
+  moreover have "S \<subseteq> \<Omega>"
+    using \<F>_Pow measurable_def meas by auto
+  ultimately show ?thesis
+    by (simp add: meas probability_subset_diff sample_space_prob_1)
+qed
+
+lemma binary_incl_excl: 
+  assumes meas_A: "measurable A"
+      and meas_B: "measurable B"
+    shows "P (A \<union> B) = P A + P B - P (A \<inter> B)"
+proof - 
+  have "measurable (B - A)"
+    by (simp add: meas_A meas_B measurable_sd) 
+  hence "P (A \<union> B) = P A + P (B - A)"
+    using assms finite_additivity Diff_disjoint Un_Diff_cancel by metis 
+  moreover have "P (B - A) = P B - P (A \<inter> B)"
+    by (simp add: Int_commute meas_A meas_B probability_set_diff)
+  ultimately show ?thesis 
+    by simp 
+qed
 
 lemma finite_subadditivty:
   assumes meas_A: "measurable A"
       and meas_B: "measurable B"
-  shows "P (A \<union> B) \<le> P A + P B" sorry 
+  shows "P (A \<union> B) \<le> P A + P B"
+  using binary_incl_excl measurable_def meas_A meas_B measurable_fi non_neg_prob by auto  
 
 end
 
