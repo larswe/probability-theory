@@ -2912,7 +2912,7 @@ next
                     sum.insert)  
 qed
 
-(* TODO: Probably delete, this isn't it. *)
+(* TODO: This might help. *)
 lemma finite_additivity':
   assumes disj: "disjoint_family_on A S"
       and meas_As: "\<forall>n\<in>S. measurable (A n)"
@@ -3048,12 +3048,14 @@ theorem non_dec_prob_limit:
   fixes A :: "nat \<Rightarrow> 'a set"
   assumes meas_As: "\<forall>n. measurable (A n)"
       and non_dec: "non_decreasing A"
-    shows "(\<lambda>n. P (A n)) \<longlonglongrightarrow> P (\<Union>n. A n)"
+    shows "(\<lambda>n. P (A n)) \<longlonglongrightarrow> P (set_limit A)"
 proof -
   let ?B = "(\<lambda>n. if n = 0 then A 0 else A n - A (n - 1))"
 
   have meas_Un: "measurable (\<Union>n. A n)"
     by (simp add: meas_As measurable_cu)
+  have meas_Bs: "\<forall>N. \<forall>n\<in>{..N}. measurable (?B n)"
+      by (simp add: meas_As measurable_sd) 
   have disj_B: "disjoint_family ?B"
     by (simp add: non_dec non_dec_to_disj)
   have AN_UnB: "\<forall>N. A N = \<Union> (?B ` {..N})"
@@ -3068,22 +3070,26 @@ proof -
     fix N
     have "disjoint_family_on ?B {..N}"  
       using non_dec non_dec_to_disj unfolding disjoint_family_on_def by blast 
-    moreover have "\<forall>n\<in>{..N}. measurable (?B n)"
-      by (simp add: meas_As measurable_sd)  
-    ultimately show "P (\<Union> (?B ` {..N})) = sum P (?B ` {..N})" 
-      using finite_additivity by blast  
+    thus "P (\<Union> (?B ` {..N})) = sum P (?B ` {..N})" 
+      using finite_additivity meas_Bs by blast  
   qed 
   ultimately have "\<forall>N. P (A N) = sum P (?B ` {..N})"  
     by auto 
 
   (* TODO - Sort out mess, *)
-  moreover have "P summable_on (?B ` UNIV)" sorry 
-  hence "((\<lambda>N. sum P (?B ` {..N})) \<longlongrightarrow> infsum P (?B ` UNIV)) at_top" sorry 
+  moreover have "((\<lambda>N. sum P (?B ` {..N})) \<longlongrightarrow> (\<Sum>\<^sub>\<infinity>n. P (?B n))) at_top" sorry 
 
-  ultimately have "(\<lambda>N. P (A N)) \<longlonglongrightarrow> infsum P (range ?B)" 
+  ultimately have "(\<lambda>N. P (A N)) \<longlonglongrightarrow> (\<Sum>\<^sub>\<infinity>n. P (?B n))" 
     by simp 
+  moreover have "P (\<Union> (range ?B)) = (\<Sum>\<^sub>\<infinity>n. P (?B n))"
+    using countable_additivity_meas meas_Bs disj_B by blast 
+  moreover have "(\<Union> (range ?B)) = (\<Union> (range A))"
+    by (simp add: non_dec non_dec_to_disj_same_cu)
+  ultimately have "(\<lambda>N. P (A N)) \<longlonglongrightarrow> P (\<Union> (range A))"
+    by simp  
 
-  thus ?thesis sorry 
+  thus ?thesis 
+    using non_dec non_decreasing_set_limit by fastforce 
 qed
 
 end
