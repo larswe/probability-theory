@@ -2630,35 +2630,44 @@ begin
 definition measurable :: "'a set \<Rightarrow> bool"
   where "measurable S = (S \<in> \<F>)"
 
-lemma measurable_additivity:
+lemma measurable_c: 
+  assumes meas: "measurable S"
+  shows "measurable (\<Omega> - S)"
+  using sigma meas measurable_def complement_stable_def sigma_algebra_omega_c_cu_stable by metis 
+
+lemma countable_additivity_meas:
   assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
       and meas: "\<forall>n. measurable (A n)"
     shows "P (\<Union>(range A)) = infsum (\<lambda>n. P (A n)) (UNIV :: nat set)"
   using assms countable_additivity measurable_def by fast
 
-lemma measurable_complement: 
-  assumes meas: "measurable S"
-  shows "measurable (\<Omega> - S)"
-  using sigma meas measurable_def complement_stable_def sigma_algebra_omega_c_cu_stable by metis 
-
-lemma measurable_bin_union: 
+lemma measurable_fu: 
   assumes meas_A: "measurable A"
       and meas_B: "measurable B"
     shows "measurable (A \<union> B)"
   using sigma assms measurable_def 
         sigma_algebra_omega_c_cu_stable cu_imp_fu_stable finite_union_stable_def by metis 
 
-lemma measurable_bin_inter: 
+lemma measurable_cu:
+  assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
+      and meas: "\<forall>n. measurable (A n)"
+    shows "measurable (\<Union>(range A))"
+  using sigma assms measurable_def sigma_algebra_omega_c_cu_stable countable_union_stable_def
+        image_subset_iff by metis 
+
+lemma measurable_fi: 
   assumes meas_A: "measurable A"
       and meas_B: "measurable B"
     shows "measurable (A \<inter> B)"
   using sigma assms measurable_def 
         sigma_algebra_omega_c_ci_stable ci_imp_fi_stable finite_inter_stable_def by metis 
 
-(* TODO, obviously *)
-lemma infsum_singleton: 
-  shows "infsum f {x} = f x"
-  by simp 
+lemma measurable_ci:
+  assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
+      and meas: "\<forall>n. measurable (A n)"
+    shows "measurable (\<Inter>(range A))"
+  using sigma assms measurable_def sigma_algebra_omega_c_ci_stable countable_inter_stable_def
+        image_subset_iff by metis 
 
 lemma measurable_empty: 
   shows "measurable {}"
@@ -2667,53 +2676,44 @@ lemma measurable_empty:
 lemma P_empty:
   shows "P {} = 0" 
 proof - 
-  let ?A = "(\<lambda>n::nat. if n = (0::nat) then \<Omega> else {})"
+  let ?A = "(\<lambda>n::nat. if n = 0 then \<Omega> else {})"
   let ?P = "(\<lambda>n. P (?A n))"
-  have "disjoint_family ?A"
-    unfolding disjoint_family_on_def by auto 
-  moreover have "\<forall>n. measurable (?A n)"
-    using measurable_complement measurable_empty by fastforce
-  ultimately have "P (\<Union>(range ?A)) = infsum ?P UNIV"
-    using measurable_additivity by presburger 
-  moreover have "\<Union>(range ?A) = \<Omega>"
-    by simp 
-  ultimately have "infsum ?P UNIV = 1"
-    using sample_space_prob_1 by auto 
-  moreover have P_0_1: "?P 0 = 1"
-    by (simp add: sample_space_prob_1)
-  moreover have "\<forall>n. (n \<noteq> 0) \<longrightarrow> (?P n \<ge> 0)"
-    using empty_in_sigma non_neg_prob sigma by auto
-  moreover have P_summable_UNIV: "?P summable_on UNIV"
-    using calculation(1) infsum_not_exists by fastforce
+  let ?S = "(UNIV - {0}) :: nat set"
 
-  ultimately have "infsum ?P (UNIV - {0}) + infsum ?P {0} = 1"
-    by (simp add: infsum_Diff) 
-
-  hence non_0_sum_0: "infsum ?P (UNIV - {0}) = 1 - infsum ?P {0}" 
-    by auto 
-  moreover have "infsum ?P {0} = ?P 0"
-    by simp 
-  ultimately have non_0_sum_0: "infsum ?P (UNIV - {0}) = 0"
-    using P_0_1 by linarith
-   
   have "\<forall>n. (n \<in> (UNIV - {0})) \<longrightarrow> (?P n = 0)"
   proof (rule ; rule) 
-    let ?S = "(UNIV - {0}) :: nat set"
     fix n
-    assume "n \<in> ?S"
-    moreover have "has_sum ?P ?S 0"
-      using non_0_sum_0 Diff_subset P_summable_UNIV has_sum_infsum summable_on_subset_banach by metis 
+
+    have "disjoint_family ?A"
+      unfolding disjoint_family_on_def by auto 
+    moreover have "\<forall>n. measurable (?A n)"
+      using measurable_c measurable_empty by fastforce
+    ultimately have "P (\<Union>(range ?A)) = infsum ?P UNIV"
+      using countable_additivity_meas by presburger 
+    hence UNIV_sum_1: "infsum ?P UNIV = 1"
+      using sample_space_prob_1 by auto 
+    hence "infsum ?P (UNIV - {0}) + infsum ?P {0} = 1"
+      using infsum_Diff infsum_not_exists subset_UNIV summable_on_subset_banach by smt 
+    hence non_0_sum_0: "infsum ?P (UNIV - {0}) = 0"
+      by (simp add: sample_space_prob_1) 
+
+    moreover assume "n \<in> ?S"
+
+    moreover have "?P summable_on UNIV"
+      using infsum_not_exists UNIV_sum_1 by fastforce 
+    hence "has_sum ?P ?S 0"
+      using non_0_sum_0 Diff_subset has_sum_infsum summable_on_subset_banach by metis 
     moreover have "(\<And>x. x \<in> ?S \<Longrightarrow> 0 \<le> ?P x)"
       using empty_in_sigma non_neg_prob sigma by auto
     ultimately show "?P n = 0"
-      using nonneg_has_sum_le_0D by (smt (verit, best)) 
+      using nonneg_has_sum_le_0D by (smt (verit, best))
   qed 
   
   thus ?thesis
     by auto
 qed
 
-lemma binary_additivity:
+lemma finite_additivity:
   assumes disj: "A \<inter> B = {}"
       and meas_A: "measurable A"
       and meas_B: "measurable B"
@@ -2724,14 +2724,17 @@ proof -
   have "disjoint_family ?A"
     using disj unfolding disjoint_family_on_def by auto 
   moreover have "\<forall>n. measurable (?A n)"
-    using disj meas_A meas_B measurable_bin_inter by fastforce 
+    using disj meas_A meas_B measurable_fi by fastforce 
   ultimately have "P (\<Union>(range ?A)) = infsum ?P UNIV"
-    using measurable_additivity by presburger 
-  moreover have "\<Union>(range ?A) = A \<union> B" sorry 
+    using countable_additivity_meas by presburger 
+  moreover have "\<Union>(range ?A) = A \<union> B" 
+    by auto 
   ultimately have "P (A \<union> B) = infsum ?P UNIV"
-    by metis 
-  moreover have "infsum ?P UNIV = P A + P B"
-    using P_empty sorry 
+    by auto  
+  moreover have "\<forall>n\<in>(UNIV - {0, 1}). ?P n = 0" 
+    using P_empty by simp
+  hence "infsum ?P UNIV = infsum ?P {0, 1}"
+    using Diff_UNIV empty_iff infsum_cong_neutral by (metis (no_types, lifting)) 
   ultimately show ?thesis 
     by auto 
 qed
@@ -2741,8 +2744,19 @@ lemma probability_complement:
   shows "P (\<Omega> - S) = 1 - P S"
 proof - 
   have "measurable (\<Omega> - S)"
-    by (simp add: meas measurable_complement)
-  hence "P (\<Omega> - S) + P S = 1" sorry (* TODO: Union is disjoint family, yada yada, helper lemmas. *)
+    by (simp add: meas measurable_c)
+  hence "P ((\<Omega> - S) \<union> S) = P (\<Omega> - S) + P S"
+    by (metis Diff_disjoint Int_commute finite_additivity meas) 
+  moreover have "(\<Omega> - S) \<union> S = \<Omega>"
+    using \<F>_Pow measurable_def meas by auto 
+  ultimately show?thesis 
+    by (simp add: sample_space_prob_1)
+qed 
+
+lemma finite_subadditivty:
+  assumes meas_A: "measurable A"
+      and meas_B: "measurable B"
+  shows "P (A \<union> B) \<le> P A + P B" sorry 
 
 end
 
