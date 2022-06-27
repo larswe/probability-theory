@@ -381,6 +381,36 @@ lemma non_increasing_stay_out:
     shows "\<forall>m\<ge>n. x \<notin> A m"
   using base non_inc non_increasing_multistep by auto
 
+lemma non_inc_to_disj: 
+  assumes non_inc: "non_increasing A"
+  shows "disjoint_family (\<lambda>n. A n - A (n + 1))"
+  unfolding disjoint_family_on_def 
+proof (rule ; rule ; rule) 
+  let ?B = "(\<lambda>n. A n - A (n + 1))"
+  fix m n :: nat 
+  assume "m \<noteq> n" 
+  then consider (N) "m < n" | (M) "n < m"
+    using nat_neq_iff by blast
+  thus "?B m \<inter> ?B n = {}"
+  proof cases
+    case N
+    hence "\<forall>x\<in>?B m. \<forall>k>m. x \<notin> A k"
+      using non_inc non_increasing_stay_out by fastforce
+    hence "\<forall>x\<in>?B m. \<forall>k>m. x \<notin> ?B k"
+      using Diff_iff by metis 
+    then show ?thesis
+      using N by auto 
+   next
+     case M
+     hence "\<forall>x\<in>?B n. \<forall>k>n. x \<notin> A k"
+       using non_inc non_increasing_stay_out by fastforce 
+     hence "\<forall>x\<in>?B n. \<forall>k>n. x \<notin> ?B k"
+       by (metis Diff_iff)
+     then show ?thesis
+       using M by blast
+  qed 
+qed
+
 lemma nd_complement_ni: 
   assumes nd: "non_decreasing A"
   shows "non_increasing (\<lambda>n. \<Omega> - A n)"
@@ -571,6 +601,42 @@ proof -
 
   ultimately show ?thesis
     by (simp add: set_limit_eq_limsup) 
+qed
+
+lemma nd_c_ni_set_limit: 
+  assumes non_dec: "non_decreasing A"
+    shows "set_limit (\<lambda>n. \<Omega> - A n) = \<Omega> - set_limit A"
+proof - 
+  let ?B = "(\<lambda>n. \<Omega> - A n)"
+  have non_inc: "non_increasing ?B"
+    by (simp add: nd_complement_ni non_dec)
+
+  have "set_limit A = \<Union> (range A)"
+    using non_dec non_decreasing_set_limit by auto
+  moreover have "set_limit ?B = \<Inter> (range ?B)"
+    using non_inc non_increasing_set_limit by auto
+  hence "set_limit ?B = \<Omega> - \<Union> (range A)"
+    by simp 
+  ultimately show ?thesis
+    by auto 
+qed
+
+lemma ni_c_nd_set_limit: 
+  assumes non_inc: "non_increasing A"
+  shows "set_limit (\<lambda>n. \<Omega> - A n) = \<Omega> - set_limit A"
+proof - 
+  let ?B = "(\<lambda>n. \<Omega> - A n)"
+  have non_dec: "non_decreasing ?B"
+    by (simp add: ni_complement_nd non_inc)
+
+  have "set_limit A = \<Inter> (range A)"
+    using non_inc non_increasing_set_limit by auto
+  moreover have "set_limit ?B = \<Union> (range ?B)"
+    using non_dec non_decreasing_set_limit by auto  
+  hence "set_limit ?B = \<Omega> - \<Inter> (range A)"
+    by simp 
+  ultimately show ?thesis
+    by blast
 qed
 
 
@@ -3115,6 +3181,34 @@ proof -
 
   thus ?thesis 
     using non_dec non_decreasing_set_limit by fastforce 
+qed
+
+
+theorem non_inc_prob_limit: 
+  fixes A :: "nat \<Rightarrow> 'a set"
+  assumes meas_As: "\<forall>n. measurable (A n)"
+      and non_inc: "non_increasing A"
+    shows "(\<lambda>n. P (A n)) \<longlonglongrightarrow> P (set_limit A)"
+proof -
+  let ?B = "(\<lambda>n. \<Omega> - A n)"
+
+  have non_dec: "non_decreasing ?B"
+    by (simp add: ni_complement_nd non_inc)
+  hence "(\<lambda>n. P (?B n)) \<longlonglongrightarrow> P (set_limit ?B)"
+    using meas_As measurable_c non_dec_prob_limit by auto
+
+  moreover have "\<forall>n. P (?B n) = 1 - P (A n)"
+    by (simp add: P_complement meas_As)
+
+  moreover have "P (set_limit ?B) = P (\<Omega> - set_limit A)"
+    by (simp add: ni_c_nd_set_limit non_inc)
+  hence "P (set_limit ?B) = 1 - P (set_limit A)"
+    by (simp add: meas_As measurable_ci non_inc non_increasing_set_limit P_complement)
+
+  ultimately have "(\<lambda>n. 1 - P (A n)) \<longlonglongrightarrow> 1 - P (set_limit A)"
+    by simp 
+  thus ?thesis 
+    sorry
 qed
 
 end
