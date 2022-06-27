@@ -3206,9 +3206,11 @@ proof -
     by (simp add: meas_As measurable_ci non_inc non_increasing_set_limit P_complement)
 
   ultimately have "(\<lambda>n. 1 - P (A n)) \<longlonglongrightarrow> 1 - P (set_limit A)"
-    by simp 
-  thus ?thesis 
-    sorry
+    by simp   
+  moreover have "\<forall>x y :: real. dist (1 - x) (1 - y) = dist x y"
+    using dist_real_def by auto
+  ultimately show ?thesis 
+    by (simp add: tendsto_iff dist_real_def) 
 qed
 
 end
