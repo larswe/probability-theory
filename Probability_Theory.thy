@@ -441,32 +441,22 @@ text "It is also possible to define limits of sets. However not every sequence o
 (* Any sensible notion of a limit should at least include these elements... *)
 lemma liminf_set:
   fixes A :: "nat \<Rightarrow> ('a set)"
-  shows "liminf A = (\<Union>n. (\<Inter>m\<in>{m'. m' \<ge> n}. A m))"
-proof - 
-  have "liminf A = (\<Union> n. \<Inter> m\<in>{n..}. A m)"
+  shows "liminf A = (\<Union>n. (\<Inter>m\<in>{n..}. A m))"
     by (simp add: liminf_SUP_INF) 
-  thus ?thesis
-    by (simp add: atLeast_def)
-qed
 
 (* ... as they eventually occur at every single index of the sequence. *)
 lemma liminf_greater_n: "(x \<in> liminf A) = (\<exists>n.\<forall>m\<ge>n. x \<in> A m)"
-  by (simp add: liminf_set) 
+  by (simp add: liminf_set atLeast_def) 
 
 (* Any sensible notion of a limit should at most include these elements... *)
 lemma limsup_set:
   fixes A :: "nat \<Rightarrow> ('a set)"
-  shows "limsup A = (\<Inter>n. (\<Union>m\<in>{m'. m' \<ge> n}. A m))"
-proof - 
-  have "limsup A = (\<Inter> n. \<Union>m\<in>{n..}. A m)"
+  shows "limsup A = (\<Inter> n. \<Union>m\<in>{n..}. A m)"
     by (simp add: limsup_INF_SUP) 
-  thus ?thesis
-    by (simp add: atLeast_def)
-qed
 
 (* ... as all others eventually stop appearing forever. *)
 lemma limsup_greater_n: "(x \<notin> limsup A) = (\<exists>n.\<forall>m\<ge>n. x \<notin> A m)"
-  by (simp add: limsup_set) 
+  by (simp add: limsup_set atLeast_def) 
 
 (* It's reassuring that the two requirements above never lead to a contradiction. *)
 lemma liminf_subseq_limsup: "liminf A \<subseteq> limsup A"
@@ -2797,6 +2787,14 @@ lemma measurable_c:
   shows "measurable (\<Omega> - S)"
   using sigma meas measurable_def complement_stable_def sigma_algebra_omega_c_cu_stable by metis 
 
+lemma measurable_empty: 
+  shows "measurable {}"
+  using empty_in_sigma measurable_def sigma by auto
+
+lemma measurable_omega: 
+  shows "measurable \<Omega>"
+  using measurable_c measurable_empty by fastforce
+
 lemma countable_additivity_meas:
   assumes disj: "disjoint_family (A :: nat \<Rightarrow> 'a set)"
       and meas: "\<forall>n. measurable (A n)"
@@ -2831,6 +2829,40 @@ proof -
     by (simp add: measurable_def) 
 qed
 
+lemma measurable_union:
+  assumes meas: "\<forall>n\<in>I. measurable (A n)"
+  shows "measurable (\<Union>n\<in>I. A n)"
+proof - 
+  let ?A' = "(\<lambda>n. if n\<notin>I then {} else A n)"
+  let ?U' = "(\<Union>(range ?A'))"
+
+  have "\<forall>n. measurable (?A' n)"
+  proof 
+    fix n 
+    consider (I) "n\<in>I" | (no_I) "n\<notin>I"
+      by auto
+    thus "measurable (?A' n)"
+    proof cases
+      case I
+      then show ?thesis
+        by (simp add: meas) 
+    next
+      case no_I
+      then show ?thesis
+        by (simp add: measurable_empty) 
+    qed 
+  qed
+
+  hence "measurable ?U'"
+    using measurable_cu sorry 
+
+  moreover have "?U' = (\<Union>n\<in>I. A n)" sorry 
+
+  ultimately show ?thesis 
+    by simp   
+qed
+
+
 lemma measurable_fi: 
   assumes meas_A: "measurable A"
       and meas_B: "measurable B"
@@ -2860,6 +2892,39 @@ proof -
     by (simp add: measurable_def) 
 qed 
 
+lemma measurable_inter:
+  assumes meas: "\<forall>n\<in>I. measurable (A n)"
+  shows "measurable (\<Inter>n\<in>I. A n)"
+proof - 
+  let ?A' = "(\<lambda>n. if n\<notin>I then {} else A n)"
+  let ?I' = "(\<Inter>(range ?A'))"
+
+  have "\<forall>n. measurable (?A' n)"
+  proof 
+    fix n 
+    consider (I) "n\<in>I" | (no_I) "n\<notin>I"
+      by auto
+    thus "measurable (?A' n)"
+    proof cases
+      case I
+      then show ?thesis
+        by (simp add: meas) 
+    next
+      case no_I
+      then show ?thesis
+        by (simp add: measurable_empty) 
+    qed 
+  qed
+
+  hence "measurable ?I'"
+    using measurable_ci sorry 
+
+  moreover have "?I' = (\<Inter>n\<in>I. A n)" sorry 
+
+  ultimately show ?thesis 
+    by simp   
+qed
+
 lemma measurable_sd: 
   assumes meas_S: "measurable S"
       and meas_T: "measurable T"
@@ -2873,14 +2938,6 @@ proof -
   thus "S - T \<in> \<F>"
     by (metis Diff_Int_distrib Int_Diff Int_absorb) 
 qed
-
-lemma measurable_empty: 
-  shows "measurable {}"
-  using empty_in_sigma measurable_def sigma by auto
-
-lemma measurable_omega: 
-  shows "measurable \<Omega>"
-  using measurable_c measurable_empty by fastforce
 
 subsection "Probabilities of sets and their combinations"
 
@@ -3225,6 +3282,35 @@ proof -
     using dist_real_def by auto
   ultimately show ?thesis 
     by (simp add: tendsto_iff dist_real_def) 
+qed
+
+theorem P_liminf_le: 
+  fixes A :: "nat \<Rightarrow> 'a set"
+  assumes meas_As: "\<forall>n. measurable (A n)"
+  shows "P (liminf A) \<le> liminf (\<lambda>n. P (A n))"
+proof - 
+  let ?I = "(\<lambda>n. \<Inter>m\<in>{n..}. A m)"
+
+  have nd_I: "non_decreasing ?I"
+    unfolding non_decreasing_def by (simp add: Inter_anti_mono image_mono)
+  moreover have "\<forall>n. measurable (?I n)"
+    by (simp add: meas_As measurable_inter) 
+  ultimately have "(\<lambda>n. P (?I n)) \<longlonglongrightarrow> P (set_limit ?I)"
+    by (simp add: non_dec_prob_limit) 
+
+  moreover have "\<forall>n. ?I n \<subseteq> A n"
+    by (simp add: INT_lower)
+
+  ultimately have "P (set_limit ?I) \<le> liminf (\<lambda>n. P (A n))" sorry  
+
+  moreover have "liminf ?I = liminf A" 
+    unfolding liminf_set by auto 
+
+  moreover have "set_limit ?I = \<Union>(range ?I)" 
+    using nd_I non_decreasing_set_limit by auto 
+  
+  ultimately show ?thesis
+    by (simp add: liminf_set) 
 qed
 
 end
