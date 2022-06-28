@@ -1,5 +1,5 @@
 theory Probability_Theory 
-  imports "HOL-Analysis.Sigma_Algebra" "HOL-Analysis.Infinite_Sum"
+  imports "HOL-Analysis.Sigma_Algebra" "HOL-Analysis.Infinite_Sum" "HOL-Library.Liminf_Limsup"
 begin
 
 chapter "Basics from Measure Theory"
@@ -438,21 +438,35 @@ subsection "Limits of Sets"
 
 text "It is also possible to define limits of sets. However not every sequence of sets has a limit."
 
-(* Any sensible notion of a limit should at least include these elements... *) 
-definition liminf :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
-  where "liminf A = (\<Union>n. (\<Inter>m\<in>{m'. m' \<ge> n}. A m))"
+(* Any sensible notion of a limit should at least include these elements... *)
+lemma liminf_set:
+  fixes A :: "nat \<Rightarrow> ('a set)"
+  shows "liminf A = (\<Union>n. (\<Inter>m\<in>{m'. m' \<ge> n}. A m))"
+proof - 
+  have "liminf A = (\<Union> n. \<Inter> m\<in>{n..}. A m)"
+    by (simp add: liminf_SUP_INF) 
+  thus ?thesis
+    by (simp add: atLeast_def)
+qed
 
 (* ... as they eventually occur at every single index of the sequence. *)
 lemma liminf_greater_n: "(x \<in> liminf A) = (\<exists>n.\<forall>m\<ge>n. x \<in> A m)"
-  by (simp add: liminf_def) 
+  by (simp add: liminf_set) 
 
 (* Any sensible notion of a limit should at most include these elements... *)
-definition limsup :: "(nat \<Rightarrow> 'a set) \<Rightarrow> 'a set"
-  where "limsup A = (\<Inter>n. (\<Union>m\<in>{m'. m' \<ge> n}. A m))"
+lemma limsup_set:
+  fixes A :: "nat \<Rightarrow> ('a set)"
+  shows "limsup A = (\<Inter>n. (\<Union>m\<in>{m'. m' \<ge> n}. A m))"
+proof - 
+  have "limsup A = (\<Inter> n. \<Union>m\<in>{n..}. A m)"
+    by (simp add: limsup_INF_SUP) 
+  thus ?thesis
+    by (simp add: atLeast_def)
+qed
 
 (* ... as all others eventually stop appearing forever. *)
 lemma limsup_greater_n: "(x \<notin> limsup A) = (\<exists>n.\<forall>m\<ge>n. x \<notin> A m)"
-  by (simp add: limsup_def) 
+  by (simp add: limsup_set) 
 
 (* It's reassuring that the two requirements above never lead to a contradiction. *)
 lemma liminf_subseq_limsup: "liminf A \<subseteq> limsup A"
