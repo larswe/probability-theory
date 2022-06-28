@@ -2830,6 +2830,7 @@ proof -
 qed
 
 lemma measurable_union:
+  fixes I :: "nat set"
   assumes meas: "\<forall>n\<in>I. measurable (A n)"
   shows "measurable (\<Union>n\<in>I. A n)"
 proof - 
@@ -2854,9 +2855,10 @@ proof -
   qed
 
   hence "measurable ?U'"
-    using measurable_cu sorry 
+    using measurable_cu by presburger 
 
-  moreover have "?U' = (\<Union>n\<in>I. A n)" sorry 
+  moreover have "?U' = (\<Union>n\<in>I. A n)" 
+    by simp 
 
   ultimately show ?thesis 
     by simp   
@@ -2893,10 +2895,12 @@ proof -
 qed 
 
 lemma measurable_inter:
+  fixes I :: "nat set"
   assumes meas: "\<forall>n\<in>I. measurable (A n)"
+      and non_empty: "I \<noteq> {}"
   shows "measurable (\<Inter>n\<in>I. A n)"
 proof - 
-  let ?A' = "(\<lambda>n. if n\<notin>I then {} else A n)"
+  let ?A' = "(\<lambda>n. if n\<notin>I then \<Omega> else A n)"
   let ?I' = "(\<Inter>(range ?A'))"
 
   have "\<forall>n. measurable (?A' n)"
@@ -2912,14 +2916,41 @@ proof -
     next
       case no_I
       then show ?thesis
-        by (simp add: measurable_empty) 
+        by (simp add: measurable_omega) 
     qed 
   qed
 
   hence "measurable ?I'"
-    using measurable_ci sorry 
+    using measurable_ci by presburger
 
-  moreover have "?I' = (\<Inter>n\<in>I. A n)" sorry 
+  moreover have "?I' = (\<Inter>n\<in>I. A n)"
+  proof (rule ; rule) 
+    show "\<And>x. x \<in> (\<Inter>n. if n \<notin> I then \<Omega> else A n) \<Longrightarrow> x \<in> \<Inter> (A ` I)"
+      by simp 
+  next 
+    fix x
+    assume x_in_sub_I: "x \<in> (\<Inter>n\<in>I. A n)"
+    have "\<forall>n. x \<in> ?A' n"
+    proof 
+      fix n 
+      consider (I) "n\<in>I" | (no_I) "n\<notin>I"
+        by auto
+      thus "x \<in> ?A' n"
+      proof cases
+        case I
+        then show ?thesis 
+          using x_in_sub_I by auto 
+      next
+        case no_I
+        moreover have "x \<in> \<Omega>" 
+          using x_in_sub_I non_empty \<F>_Pow measurable_def meas by fastforce 
+        ultimately show ?thesis 
+          by auto 
+      qed 
+    qed
+    thus "x \<in> ?I'"
+      by fastforce 
+  qed 
 
   ultimately show ?thesis 
     by simp   
@@ -3045,7 +3076,7 @@ next
   ultimately have "P (\<Union> (A ` insert x F)) = sum P (A ` F) + P (A x)"
     using insert.IH by auto 
   thus ?case
-    by (smt (verit) meas_F disj_F finite_imageI image_insert insert.IH insert.hyps(1) insert_absorb 
+    by (smt meas_F disj_F finite_imageI image_insert insert.IH insert.hyps(1) insert_absorb 
                     sum.insert)  
 qed
 
@@ -3152,25 +3183,6 @@ proof -
 qed
 
 section "Limits and Completeness"
-
-(* TODO: The following 2 lemmas probably/maybe don't actually help. *)
-
-lemma sum_infsum_e_N: 
-  fixes Q :: "nat \<Rightarrow> real"
-  assumes smmble: "Q summable_on UNIV"
-  shows "\<forall>e>0. \<exists>N. abs (sum Q {..N} - infsum Q UNIV) < e"
-proof - 
-  have "(sum Q \<longlongrightarrow> infsum Q UNIV) (finite_subsets_at_top UNIV)"
-    using infsum_tendsto smmble by blast
-  hence "filterlim (sum Q) (nhds (infsum Q UNIV)) (finite_subsets_at_top UNIV)"
-    by simp  
-  hence "\<forall>e>0. eventually (\<lambda>S. abs (sum Q S - infsum Q UNIV) < e) (finite_subsets_at_top UNIV)"
-    by (metis LIM_zero_iff order_tendsto_iff tendsto_rabs_zero_iff)
-  hence "\<forall>e>0. \<exists>X. finite X \<and> (\<forall>Y. finite Y \<and> X \<subseteq> Y \<longrightarrow> abs (sum Q Y - infsum Q UNIV) < e)"
-    by (simp add: eventually_finite_subsets_at_top)
-  thus ?thesis
-    by (meson finite_atMost finite_nat_iff_bounded_le)
-qed
 
 lemma partial_sum_LIM_infsum: 
   fixes Q :: "nat \<Rightarrow> real"
@@ -3293,15 +3305,17 @@ proof -
 
   have nd_I: "non_decreasing ?I"
     unfolding non_decreasing_def by (simp add: Inter_anti_mono image_mono)
-  moreover have "\<forall>n. measurable (?I n)"
+  moreover have meas_Is: "\<forall>n. measurable (?I n)"
     by (simp add: meas_As measurable_inter) 
   ultimately have "(\<lambda>n. P (?I n)) \<longlonglongrightarrow> P (set_limit ?I)"
     by (simp add: non_dec_prob_limit) 
 
   moreover have "\<forall>n. ?I n \<subseteq> A n"
     by (simp add: INT_lower)
+  hence "\<forall>n. P (?I n) \<le> P (A n)"
+    using P_subseq meas_As meas_Is by auto
 
-  ultimately have "P (set_limit ?I) \<le> liminf (\<lambda>n. P (A n))" sorry  
+  ultimately have "P (set_limit ?I) \<le> liminf (\<lambda>n. P (A n))" sorry 
 
   moreover have "liminf ?I = liminf A" 
     unfolding liminf_set by auto 
