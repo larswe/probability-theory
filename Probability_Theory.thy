@@ -3309,13 +3309,16 @@ proof -
     by (simp add: meas_As measurable_inter) 
   ultimately have "(\<lambda>n. P (?I n)) \<longlonglongrightarrow> P (set_limit ?I)"
     by (simp add: non_dec_prob_limit) 
+  hence "P (set_limit ?I) \<le> liminf (\<lambda>n. P (?I n))" sorry   
 
   moreover have "\<forall>n. ?I n \<subseteq> A n"
     by (simp add: INT_lower)
   hence "\<forall>n. P (?I n) \<le> P (A n)"
     using P_subseq meas_As meas_Is by auto
+  hence "liminf (\<lambda>n. P (?I n)) \<le> liminf (\<lambda>n. P (A n))" sorry 
 
-  ultimately have "P (set_limit ?I) \<le> liminf (\<lambda>n. P (A n))" sorry 
+  ultimately have "P (set_limit ?I) \<le> liminf (\<lambda>n. P (A n))" 
+    by simp 
 
   moreover have "liminf ?I = liminf A" 
     unfolding liminf_set by auto 
